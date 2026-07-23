@@ -138,9 +138,6 @@ fun AppNavHost(navController: NavHostController = rememberNavController()) {
                 onAddServer = { navController.navigate(Routes.serverEdit(null)) },
                 onEditServer = { id -> navController.navigate(Routes.serverEdit(id)) },
                 onOpenBrowser = { id -> navController.navigate(Routes.browser(id)) },
-                onOpenHistory = { navController.navigate(Routes.history()) },
-                onOpenHosts = { navController.navigate(Routes.hostsSettings()) },
-                onOpenBackup = { navController.navigate(Routes.backup()) },
                 onOpenSettings = { navController.navigate(Routes.settings()) },
             )
         }

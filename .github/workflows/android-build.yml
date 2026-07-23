@@ -50,11 +50,19 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-      - name: Create Pre-release
+      - name: Delete existing dev release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete dev --yes --cleanup-tag || true
+
+      - name: Create/overwrite dev release
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
-          tag_name: prerelease-${{ github.run_id }}
+          tag_name: dev
+          name: dev
           files: app/build/outputs/apk/release/*.apk
           body: |
             自动构建（分支 ${{ github.ref_name }} - commit ${{ github.sha }}）

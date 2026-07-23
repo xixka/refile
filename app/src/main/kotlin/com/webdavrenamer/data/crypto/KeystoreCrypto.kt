@@ -4,7 +4,6 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import java.security.KeyStore
-import java.security.SecureRandom
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -38,8 +37,11 @@ class KeystoreCrypto(private val context: Context) {
         val secretKey = keyStore.getKey(KEY_ALIAS, null) as SecretKey
 
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        val iv = ByteArray(IV_SIZE_BYTES).also { SecureRandom().nextBytes(it) }
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
+        // Android Keystore 在 GCM 加密模式下不允许调用方传入 IV（默认
+        // setRandomizedEncryptionRequired=true），须由 provider 自动生成。
+        // 加密后从 cipher.iv 取回随机 IV，与密文一同存储以供解密使用。
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val iv = cipher.iv
 
         val cipherText = cipher.doFinal(plainText.toByteArray(Charsets.UTF_8))
         val combined = ByteArray(iv.size + cipherText.size).apply {
