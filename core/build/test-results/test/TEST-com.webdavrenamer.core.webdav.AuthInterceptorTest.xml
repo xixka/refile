@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.webdav.AuthInterceptorTest" tests="9" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:21.224Z" hostname="all-in-one-53-r489g" time="0.242">
+  <properties/>
+  <testcase name="200 on first request does not trigger auth" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.01"/>
+  <testcase name="non 401 response returned as-is without retry" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.006"/>
+  <testcase name="basic negotiation resends with Basic Authorization header" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.052"/>
+  <testcase name="first request carries no Authorization header" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.047"/>
+  <testcase name="digest without qop uses RFC 2069 fallback" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.057"/>
+  <testcase name="digest negotiation resends with Digest Authorization header" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.057"/>
+  <testcase name="no credentials does not retry" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.003"/>
+  <testcase name="unknown auth scheme does not retry" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.002"/>
+  <testcase name="loop prevention retries at most once" classname="com.webdavrenamer.core.webdav.AuthInterceptorTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

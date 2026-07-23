@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.webdav.UrlEncodingTest" tests="12" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:21.488Z" hostname="all-in-one-53-r489g" time="0.0">
+  <properties/>
+  <testcase name="chinese characters percent-encoded as UTF-8" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="buildDestinationUrl root path" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="slash preserved as path separator" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="space encoded as percent-20 not plus" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="buildDestinationUrl encodes special chars" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="percent sign encoded" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="buildDestinationUrl encodes path and joins base" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="mixed chinese space and slash" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="special chars colon question hash percent encoded" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="unreserved chars preserved" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="empty path returns empty" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <testcase name="buildDestinationUrl normalizes trailing slash and leading slash" classname="com.webdavrenamer.core.webdav.UrlEncodingTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

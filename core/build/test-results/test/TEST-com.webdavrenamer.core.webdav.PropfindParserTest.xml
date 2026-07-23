@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.webdav.PropfindParserTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:21.467Z" hostname="all-in-one-53-r489g" time="0.019">
+  <properties/>
+  <testcase name="chinese displayname entry parses correctly" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.003"/>
+  <testcase name="extractExtension lowercases extension" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.0"/>
+  <testcase name="malformed xml returns empty list" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="collection entry extension is null" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="empty string returns empty list" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.0"/>
+  <testcase name="blank displayname treated as missing" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.002"/>
+  <testcase name="non numeric contentlength yields null" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="resourcetype with collection child means directory" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="file entry has length contenttype and is not collection" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="default namespace without prefix parses" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="entry with only href yields defaults" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="first entry is collection with displayname and timestamps" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.0"/>
+  <testcase name="parses three entries from sample" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.0"/>
+  <testcase name="extractExtension handles no extension" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.001"/>
+  <testcase name="empty resourcetype means not collection" classname="com.webdavrenamer.core.webdav.PropfindParserTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

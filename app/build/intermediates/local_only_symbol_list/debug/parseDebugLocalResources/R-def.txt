@@ -1,0 +1,10 @@
+R_DEF: Internal format may change without notice
+local
+color accent_amber
+color cinema_black
+color cinema_dark
+color dark_surface
+string app_name
+style Theme.WebDavRenamer
+xml backup_rules
+xml data_extraction_rules

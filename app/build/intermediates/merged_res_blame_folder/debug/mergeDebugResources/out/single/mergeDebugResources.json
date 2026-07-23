@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.webdavrenamer.app-debug-71:/xml_backup_rules.xml.flat",
+        "source": "com.webdavrenamer.app-main-73:/xml/backup_rules.xml"
+    },
+    {
+        "merged": "com.webdavrenamer.app-debug-71:/xml_data_extraction_rules.xml.flat",
+        "source": "com.webdavrenamer.app-main-73:/xml/data_extraction_rules.xml"
+    }
+]

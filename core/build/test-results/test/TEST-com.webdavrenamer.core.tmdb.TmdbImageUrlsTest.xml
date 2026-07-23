@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:20.311Z" hostname="all-in-one-53-r489g" time="0.002">
+  <properties/>
+  <testcase name="backdrop default size w780" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.001"/>
+  <testcase name="still default size w300" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="path without leading slash still works" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="poster custom size" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="base url constant" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="size with trailing slash trimmed" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="null path returns null" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="poster default size w342" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <testcase name="original size" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.001"/>
+  <testcase name="blank path returns null" classname="com.webdavrenamer.core.tmdb.TmdbImageUrlsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

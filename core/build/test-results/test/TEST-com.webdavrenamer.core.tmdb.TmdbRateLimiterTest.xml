@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:20.331Z" hostname="all-in-one-53-r489g" time="0.884">
+  <properties/>
+  <testcase name="real sleeper honors interrupt and resets flag" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.053"/>
+  <testcase name="retry interceptor also handles 503" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.092"/>
+  <testcase name="rate limiter blocks request beyond window" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.307"/>
+  <testcase name="api key interceptor adds api_key and Accept header" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.006"/>
+  <testcase name="rate limiter actually delays 41st request under default config" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.204"/>
+  <testcase name="retry interceptor exponential backoff without Retry-After" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.153"/>
+  <testcase name="retry interceptor does not retry on 200" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.003"/>
+  <testcase name="api key interceptor preserves existing query params" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.004"/>
+  <testcase name="retry interceptor retries on 429 with Retry-After" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.049"/>
+  <testcase name="retry interceptor gives up after max retries" classname="com.webdavrenamer.core.tmdb.TmdbRateLimiterTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
