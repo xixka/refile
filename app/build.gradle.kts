@@ -22,10 +22,24 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        // Debug keystore so pre-release APKs are installable on devices.
+        // Replace with a dedicated release keystore (via env vars) for production signing.
+        create("preRelease") {
+            storeFile = file("${rootProject.projectDir}/debug.keystore")
+                .takeIf { it.exists() }
+                ?: file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("preRelease")
         }
     }
 
