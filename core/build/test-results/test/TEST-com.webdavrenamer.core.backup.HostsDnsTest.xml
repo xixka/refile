@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.backup.HostsDnsTest" tests="11" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:18.223Z" hostname="all-in-one-53-r489g" time="0.151">
+  <properties/>
+  <testcase name="disabled 时全部走 systemDns 即使命中 hosts" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.082"/>
+  <testcase name="多条 IP 轮询 覆盖全部起始 IP" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.048"/>
+  <testcase name="多条 IP 轮询 连续 lookup 首元素轮换" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.004"/>
+  <testcase name="命中 hosts 返回配置的 IP" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.004"/>
+  <testcase name="未命中走 systemDns 返回其结果" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.0"/>
+  <testcase name="大小写不敏感匹配 API THEMOVIEDB ORG 命中" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.0"/>
+  <testcase name="空 ips 列表回退 systemDns" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.0"/>
+  <testcase name="系统 DNS 抛 UnknownHostException 时未命中原样抛出" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.003"/>
+  <testcase name="HostPresets 默认候选列表包含 api 与 image 域名" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.001"/>
+  <testcase name="image tmdb org 域名命中返回配置 IP" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.007"/>
+  <testcase name="命中 hosts 多条 IP 全部返回" classname="com.webdavrenamer.core.backup.HostsDnsTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

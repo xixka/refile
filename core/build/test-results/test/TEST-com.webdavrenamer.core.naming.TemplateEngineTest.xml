@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.naming.TemplateEngineTest" tests="55" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:19.566Z" hostname="all-in-one-53-r489g" time="0.085">
+  <properties/>
+  <testcase name="pipe acronym" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.017"/>
+  <testcase name="word separator underscore" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="emby preset movie template" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.003"/>
+  <testcase name="variable d airdate" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable anime flag" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable group from filename" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable localize ja n" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable ny name year combo" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.005"/>
+  <testcase name="variable t episode title merged" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable az sort letter" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="pipe joining list" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable ci collection index" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable fn display name" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable vc from filename" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="path separator creates directories" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="unknown variable does not crash" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.024"/>
+  <testcase name="variable vf from filename" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable genre first" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable info tagline" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.003"/>
+  <testcase name="variable sxe" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.006"/>
+  <testcase name="pipe pad" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="illegal char replaced by dash" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="pipe sortName" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="missing variable in parens omitted" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable actors list" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="emby preset episode template" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable f full path" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable e episode" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable n movie name" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable s00e00 padded" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="missing variable renders empty and cleans separators" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable collection" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="casing upper" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable airdate alias" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="excluded binding renders empty with warning" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable pi part index" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable decade" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable imdbid" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable bytes human readable" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.006"/>
+  <testcase name="variable id and tmdbid" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.004"/>
+  <testcase name="pipe chained lower space" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable rating" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable today" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="pipe roman" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="pipe upper" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable y year" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.001"/>
+  <testcase name="variable primaryTitle" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable sc number of seasons" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable type" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable tvdbid only for episode" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable absolute episode" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable certification" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable director" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable s season" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <testcase name="variable genres list" classname="com.webdavrenamer.core.naming.TemplateEngineTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

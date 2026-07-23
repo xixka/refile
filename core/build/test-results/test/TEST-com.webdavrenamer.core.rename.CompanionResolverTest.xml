@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.rename.CompanionResolverTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:19.750Z" hostname="all-in-one-53-r489g" time="0.082">
+  <properties/>
+  <testcase name="resolve returns empty when no companions" classname="com.webdavrenamer.core.rename.CompanionResolverTest" time="0.042"/>
+  <testcase name="resolve returns companions for same base name" classname="com.webdavrenamer.core.rename.CompanionResolverTest" time="0.032"/>
+  <testcase name="resolve skips non-matching base name" classname="com.webdavrenamer.core.rename.CompanionResolverTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

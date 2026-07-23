@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.rename.RenameExecutorTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:19.836Z" hostname="all-in-one-53-r489g" time="0.162">
+  <properties/>
+  <testcase name="main failure skips companions returns Failed" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.033"/>
+  <testcase name="companion partial failure returns Partial" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.015"/>
+  <testcase name="multiple ops sorted by target depth, mkcol before deep move" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.034"/>
+  <testcase name="progress callback invoked current 1 to total" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.018"/>
+  <testcase name="report counts succeeded and failed" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.018"/>
+  <testcase name="single move success returns Success" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.008"/>
+  <testcase name="retry failed ops succeeds" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.013"/>
+  <testcase name="mkcol 405 does not error and continues to move" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.006"/>
+  <testcase name="companion success returns Success" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.009"/>
+  <testcase name="move failure returns Failed" classname="com.webdavrenamer.core.rename.RenameExecutorTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

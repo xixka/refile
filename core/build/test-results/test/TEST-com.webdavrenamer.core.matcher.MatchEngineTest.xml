@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.matcher.MatchEngineTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:19.521Z" hostname="all-in-one-53-r489g" time="0.03">
+  <properties/>
+  <testcase name="auto match when high confidence and margin" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.02"/>
+  <testcase name="year mismatch reduces bonus" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.004"/>
+  <testcase name="no match when no candidates" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.001"/>
+  <testcase name="alias fallback boosts score" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.001"/>
+  <testcase name="needs confirm when top two too close" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.0"/>
+  <testcase name="needs confirm when low confidence" classname="com.webdavrenamer.core.matcher.MatchEngineTest" time="0.003"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

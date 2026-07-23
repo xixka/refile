@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.tmdb.TmdbMapperTest" tests="23" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:20.319Z" hostname="all-in-one-53-r489g" time="0.01">
+  <properties/>
+  <testcase name="tv external ids pass through" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie extracts director from crew" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie actors top 5 by order" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie actors sorted by order when out of order" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="tv director from created_by first" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="collection index null when movie not in parts" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie imdb id from external_ids preferred over root" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie info map contains overview and tagline" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.001"/>
+  <testcase name="movie maps year from release_date" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="tv maps as EPISODE with year from first_air_date" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="parseYear extracts first 4 chars" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie certification prefers US release_date" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="season 0 marks special episode number" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="tv certification from content_ratings US" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="collection fills collectionIndex by release_date order and collectionYears" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie collection name and id from belongs_to_collection" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie localize maps translations to lang title" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="light movie search result maps minimal fields" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.001"/>
+  <testcase name="light tv search result maps minimal fields" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.005"/>
+  <testcase name="movie certification falls back to first country when no US" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="multi-episode titles merged with A and B" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="movie extracts genres names" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <testcase name="season fills episode numbers and titles for single episode" classname="com.webdavrenamer.core.tmdb.TmdbMapperTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

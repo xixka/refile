@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.parser.FilenameParserTest" tests="39" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:19.661Z" hostname="all-in-one-53-r489g" time="0.087">
+  <properties/>
+  <testcase name="dots replaced with spaces" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.014"/>
+  <testcase name="part disc2" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="Chinese season and episode" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="audio codecs" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="no year movie" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="brackets release info stripped" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="standalone E02" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="S01E01-E03 range" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.006"/>
+  <testcase name="daily show date pattern" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.002"/>
+  <testcase name="HDTV source" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="daily show dashed date" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="resolution 4K" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="NxN pattern" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="video codecs" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="tech tail stripped" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="video extensions recognized" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="extension split" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="Remux source" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="WEB-DL source" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="Chinese episode only" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="standalone EP02" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="subtitle extensions recognized" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="year in parens preserved for year extraction but stripped from title" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="no extension" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="part cd1" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="underscores replaced with spaces" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.002"/>
+  <testcase name="combined group in dash and brackets" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="apollo 13 not misclassified as episode" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="empty filename" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="bracket episode 02" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="Chinese title with tech" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.004"/>
+  <testcase name="DVDRip source" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="S01E01E02 multi-episode" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="preserves chinese title with season" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.002"/>
+  <testcase name="WEBRip source" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.002"/>
+  <testcase name="multi episode three eps" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="S1E2 lowercase" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.001"/>
+  <testcase name="BluRay source variants" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.0"/>
+  <testcase name="SxxExx basic" classname="com.webdavrenamer.core.parser.FilenameParserTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.webdavrenamer.core.webdav.WebDavClientTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-07-23T14:13:21.491Z" hostname="all-in-one-53-r489g" time="0.159">
+  <properties/>
+  <testcase name="testConnection success returns Success with entry" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.016"/>
+  <testcase name="mkcol other failure code returns false" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.018"/>
+  <testcase name="move sends MOVE with encoded Destination and Overwrite F" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.009"/>
+  <testcase name="propfind non success returns empty list" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.006"/>
+  <testcase name="propfind depth 1 sends PROPFIND with Depth and Content-Type headers" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.007"/>
+  <testcase name="mkcol sends MKCOL and 201 returns true" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.004"/>
+  <testcase name="testConnection 401 with wrong creds retries once then AuthFailure" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.011"/>
+  <testcase name="testConnection 401 without credentials returns AuthFailure" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.012"/>
+  <testcase name="move overwrite true sends Overwrite T" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.006"/>
+  <testcase name="propfind depth 0 returns single resource" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.015"/>
+  <testcase name="mkcol 405 returns idempotent success" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.027"/>
+  <testcase name="testConnection 405 returns NotWebDav" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.013"/>
+  <testcase name="move failure returns false" classname="com.webdavrenamer.core.webdav.WebDavClientTest" time="0.013"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
