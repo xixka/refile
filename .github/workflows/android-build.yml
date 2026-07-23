@@ -3,9 +3,7 @@ name: Android Build & Pre-release
 on:
   push:
     branches:
-      - 'dev/*'
-      - 'feature/*'
-      - 'release/*'
+      - '**'
   workflow_dispatch:
 
 jobs:
