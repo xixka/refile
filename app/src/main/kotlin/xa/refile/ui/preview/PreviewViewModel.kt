@@ -198,7 +198,7 @@ class PreviewViewModel @Inject constructor(
         )
         val isEpisode = media.isEpisode
         // resolvedTemplate 为空时回退到内置预设对应类型的模板。
-        val template = resolvedTemplate.takeIf { it.isNotBlank() }
+        val template = resolvedTemplate?.takeIf { it.isNotBlank() }
             ?: presetRepo.templateFor(preset, isEpisode)
         val fileCtx = FileContext(
             displayName = fileName,
