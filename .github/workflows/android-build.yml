@@ -3,7 +3,7 @@ name: Android Build
 on:
   push:
     branches:
-      - '**'
+      - main
   workflow_dispatch:
 
 permissions:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -39,16 +41,22 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
+      - name: Delete previous dev release & tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete dev --yes --cleanup-tag --repo "$GITHUB_REPOSITORY" || true
+
       - name: Publish dev build to GitHub Releases
-        if: github.ref == 'refs/heads/dev'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: dev-${{ github.sha }}
-          name: Dev Build ${{ github.sha }}
+          tag_name: dev
+          name: dev
           body: |
-            Automated dev branch build.
+            Automated dev build from `main`.
 
             - Branch: ${{ github.ref_name }}
             - Commit: ${{ github.sha }}
+            - Built at: ${{ github.event.head_commit.timestamp }}
           prerelease: true
           files: app/build/outputs/apk/release/*.apk
