@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -28,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,8 +49,14 @@ import kotlinx.coroutines.launch
 /**
  * 添加/编辑服务器页（计划 §M1 SubTask 1.4.2）。
  *
- * 表单字段：别名、Base URL、端口、根路径、用户名、密码（PasswordVisualTransformation）、
- * HTTPS 开关、认证方式（auto/basic/digest）。
+ * 表单字段（按测试反馈简化）：
+ * - 别名
+ * - 完整 URL（含 scheme/host/port/路径，如 `https://dav.example.com:8443/dav`）
+ * - 用户名（必填，不支持匿名访问）
+ * - 密码（PasswordVisualTransformation）
+ * - 认证方式（auto/basic/digest）
+ *
+ * 已移除：Base URL/端口/根路径/HTTPS 开关拆分字段（合并为完整 URL）、匿名访问。
  *
  * - 「测试连接」调用 [ServerEditViewModel.testConnection]，结果以彩色文案反馈。
  * - 「保存」调用 [ServerEditViewModel.save]，成功后 [onSaved]；失败展示错误。
@@ -108,29 +111,18 @@ fun ServerEditScreen(
             OutlinedTextField(
                 value = uiState.baseUrl,
                 onValueChange = viewModel::updateBaseUrl,
-                label = { Text("Base URL（主机，如 dav.example.com）") },
+                label = { Text("完整 URL（如 https://dav.example.com:8443/dav）") },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = uiState.port,
-                onValueChange = viewModel::updatePort,
-                label = { Text("端口（留空使用默认）") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            OutlinedTextField(
-                value = uiState.rootPath,
-                onValueChange = viewModel::updateRootPath,
-                label = { Text("根路径") },
-                singleLine = true,
+                supportingText = {
+                    Text("包含协议、主机、端口与路径；不再单独配置端口/根路径")
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
                 value = uiState.username,
                 onValueChange = viewModel::updateUsername,
-                label = { Text("用户名（可空，匿名访问）") },
+                label = { Text("用户名（必填，不支持匿名访问）") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -157,18 +149,6 @@ fun ServerEditScreen(
                 },
                 modifier = Modifier.fillMaxWidth(),
             )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("启用 HTTPS", style = MaterialTheme.typography.bodyLarge)
-                Switch(
-                    checked = uiState.https,
-                    onCheckedChange = viewModel::updateHttps,
-                )
-            }
 
             Text("认证方式", style = MaterialTheme.typography.bodyLarge)
             Row(

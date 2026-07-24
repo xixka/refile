@@ -60,8 +60,10 @@ data class BackupPayload(
 data class SettingsSnapshot(
     val apiKey: String = "",
     val language: String = "zh-CN",
-    val presetId: String = "PLEX",
+    val presetId: String = "EMBY",
     val templateString: String = "",
+    val movieTemplateString: String = "",
+    val episodeTemplateString: String = "",
     val visualOptions: VisualOptionsSnapshot = VisualOptionsSnapshot(),
 )
 

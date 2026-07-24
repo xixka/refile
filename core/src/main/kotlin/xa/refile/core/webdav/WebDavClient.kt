@@ -60,7 +60,11 @@ class WebDavClient(
             .header("Content-Type", "application/xml; charset=utf-8")
             .build()
         httpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return@use emptyList<WebDavEntry>()
+            // 非 2xx/207 视为错误并抛出，便于调用方区分「读取失败」与「空目录」。
+            // 空目录的 PROPFIND Depth 1 仍会返回 1 条（目录自身），不会走到这里。
+            if (!response.isSuccessful && response.code != 207) {
+                throw WebDavException(response.code, "HTTP ${response.code}")
+            }
             val xml = response.body?.string() ?: ""
             parser.parse(xml)
         }
@@ -197,3 +201,15 @@ sealed class ConnectionResult {
     /** 网络错误（无法连接）。 */
     data class NetworkError(val message: String) : ConnectionResult()
 }
+
+/**
+ * WebDAV 请求异常（PROPFIND/MOVE 等非成功状态码）。
+ *
+ * 用于让调用方区分「读取失败（HTTP 错误）」与「空目录（成功但无子项）」：
+ * - 空目录的 PROPFIND Depth 1 会返回 1 条（目录自身），不会抛本异常。
+ * - 401/404/5xx 等会抛本异常，调用方可据 [code] 给出针对性提示。
+ *
+ * @property code HTTP 状态码。
+ * @property message 人类可读的简短描述。
+ */
+class WebDavException(val code: Int, override val message: String) : Exception(message)

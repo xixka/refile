@@ -50,7 +50,11 @@ class HostsSpeedTest(
      * 测试单个 IP 的连通性 + 延迟。
      *
      * 构造 [Dns]：对目标 [hostname] 返回 [ip]，其它回退系统 DNS。
-     * 用 HTTPS 请求 `https://{hostname}:{port}{path}`，HEAD 方法（轻量）。
+     * 用 HTTPS GET 请求 `https://{hostname}:{port}{path}`。
+     *
+     * 注意：曾用 HEAD 方法，但 TMDB API 根路径与 image.tmdb.org 对 HEAD 返回 405
+     * Method Not Allowed，导致测速一律判失败（spec §5.3.3 自动选优不可用）。
+     * 改用 GET；只要拿到任意 HTTP 响应（含 4xx）即视为「连通」，5xx/异常才算失败。
      * 超时 5s。
      *
      * @param hostname 目标域名（用于 SNI/Host/证书校验）。
@@ -84,7 +88,7 @@ class HostsSpeedTest(
         val portPart = if (port == 443) "" else ":$port"
         val request = Request.Builder()
             .url("https://$hostname$portPart$path")
-            .head()
+            .get()
             .build()
 
         val startNanos = System.nanoTime()
@@ -92,7 +96,8 @@ class HostsSpeedTest(
             client.newCall(request).execute().use { response ->
                 val latency = (System.nanoTime() - startNanos) / NANOS_PER_MS
                 val code = response.code
-                val available = code in 200..399
+                // 5xx 视为服务端错误/不可用；其余（含 4xx、3xx、2xx）视为连通成功
+                val available = code < 500
                 IpSpeedTestResult(
                     ip = ip,
                     latencyMs = latency,
@@ -102,7 +107,6 @@ class HostsSpeedTest(
                 )
             }
         } catch (e: Exception) {
-            val latency = (System.nanoTime() - startNanos) / NANOS_PER_MS
             IpSpeedTestResult(
                 ip = ip,
                 latencyMs = null,

@@ -78,13 +78,13 @@ class HostsSpeedTestTest {
     }
 
     @Test
-    fun `testIp 4xx 视为不可用且 errorMessage 标注状态码`() = runTest {
+    fun `testIp 4xx 视为可用（连通成功，仅 5xx 视为不可用）`() = runTest {
         server.enqueue(MockResponse().setResponseCode(404))
         val result = speedTest.testIp(HostPresets.TMDB_API, "1.2.3.4")
 
-        assertThat(result.isAvailable).isFalse()
+        assertThat(result.isAvailable).isTrue()
         assertThat(result.statusCode).isEqualTo(404)
-        assertThat(result.errorMessage).isEqualTo("HTTP 404")
+        assertThat(result.errorMessage).isNull()
     }
 
     @Test

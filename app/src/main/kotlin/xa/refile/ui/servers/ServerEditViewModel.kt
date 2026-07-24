@@ -12,21 +12,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.net.URI
+import java.net.URISyntaxException
 import javax.inject.Inject
 
 /**
  * 添加/编辑服务器页 ViewModel（计划 §M1 SubTask 1.4.2）。
  *
- * 持有表单的可变 UI 状态，负责：
- * - [load]：编辑模式预填（密码字段留空表示"保留原密码"，明文密码绝不回显，红线）。
- * - [testConnection]：用当前输入构造临时 [ServerConfigEntity] 调 [ServerRepository.testConnection]，
- *   把 [ConnectionResult] 映射为可读文案。
- * - [save]：新增调 [ServerRepository.addServer]，编辑调 [ServerRepository.updateServer]；返回 id 或抛异常。
+ * 表单字段按测试反馈简化：仅别名/完整 URL/用户名/密码/认证方式。
+ * - URL 字段值存入 [ServerConfigEntity.baseUrl]，已含 scheme/host/port/路径，
+ *   仓库与浏览器直接作为完整 baseUrl 使用，不再拼装。
+ * - 用户名必填（不支持匿名访问）。
+ * - 编辑模式预填时密码留空表示「保留原密码」，明文密码绝不回显（红线）。
  *
- * 说明：[ServerRepository.testConnection] 会对 [ServerConfigEntity.encryptedPassword] 解密后使用，
- * 因此为了用"当前输入的明文密码"测试连接，需先经 [KeystoreCrypto] 加密形成临时 entity
- * （加密→仓库内解密为同一明文，round-trip），否则无法对尚未保存的新密码做连通性测试。
- * [KeystoreCrypto] 仅用于此 round-trip，不在 UI 层持久化任何密文。
+ * [testConnection] 用当前输入构造临时 [ServerConfigEntity] 调 [ServerRepository.testConnection]，
+ * 把 [ConnectionResult] 映射为可读文案。为对新输入密码做连通性测试，密码先经 [KeystoreCrypto]
+ * 加密形成临时 entity（加密→仓库内解密为同一明文 round-trip）；UI 层不持久化任何密文。
  */
 @HiltViewModel
 class ServerEditViewModel @Inject constructor(
@@ -45,12 +46,9 @@ class ServerEditViewModel @Inject constructor(
         val id: Long? = null,
         val name: String = "",
         val baseUrl: String = "",
-        val port: String = "",
-        val rootPath: String = "/",
         val username: String = "",
         val password: String = "",
         val authType: String = "auto",
-        val https: Boolean = true,
         val isEditing: Boolean = false,
         val isTesting: Boolean = false,
         val isSaving: Boolean = false,
@@ -71,14 +69,6 @@ class ServerEditViewModel @Inject constructor(
         _uiState.update { it.copy(baseUrl = value) }
     }
 
-    fun updatePort(value: String) {
-        _uiState.update { it.copy(port = value.filter { ch -> ch.isDigit() }) }
-    }
-
-    fun updateRootPath(value: String) {
-        _uiState.update { it.copy(rootPath = value) }
-    }
-
     fun updateUsername(value: String) {
         _uiState.update { it.copy(username = value) }
     }
@@ -89,10 +79,6 @@ class ServerEditViewModel @Inject constructor(
 
     fun updateAuthType(value: String) {
         _uiState.update { it.copy(authType = value) }
-    }
-
-    fun updateHttps(value: Boolean) {
-        _uiState.update { it.copy(https = value) }
     }
 
     /** 编辑模式预填。id 为 null 或 <=0 视为新增。 */
@@ -112,12 +98,9 @@ class ServerEditViewModel @Inject constructor(
                 id = entity.id,
                 name = entity.name,
                 baseUrl = entity.baseUrl,
-                port = entity.port?.toString() ?: "",
-                rootPath = entity.rootPath,
                 username = entity.username ?: "",
                 password = "", // 明文密码不回显（红线）
                 authType = entity.authType,
-                https = entity.https,
                 isEditing = true,
             )
         }
@@ -126,7 +109,7 @@ class ServerEditViewModel @Inject constructor(
     /** 构造用于"测试连接"的临时实体。密码用当前输入（加密后 round-trip），留空则沿用原密文。 */
     private fun buildTempEntity(): ServerConfigEntity {
         val s = _uiState.value
-        val portInt = s.port.trim().toIntOrNull()
+        val (https, port, rootPath) = parseUrlExtras(s.baseUrl)
         val encrypted = if (s.password.isNotEmpty()) {
             crypto.encrypt(s.password)
         } else {
@@ -135,13 +118,13 @@ class ServerEditViewModel @Inject constructor(
         return ServerConfigEntity(
             id = s.id ?: 0L,
             name = s.name,
-            baseUrl = s.baseUrl,
-            port = portInt,
-            rootPath = s.rootPath.ifBlank { "/" },
-            username = s.username.trim().ifBlank { null },
+            baseUrl = s.baseUrl.trim().trimEnd('/'),
+            port = port,
+            rootPath = rootPath,
+            username = s.username.trim(),
             encryptedPassword = encrypted,
             authType = s.authType,
-            https = s.https,
+            https = https,
         )
     }
 
@@ -169,47 +152,76 @@ class ServerEditViewModel @Inject constructor(
 
     /**
      * 新增或更新。返回 id；校验失败或仓库异常时抛出，由 UI 捕获展示。
+     *
+     * 校验：名称非空、URL 合法（含 scheme+host）、用户名非空（不支持匿名）。
      */
     suspend fun save(): Long {
         val s = _uiState.value
         require(s.name.isNotBlank()) { "名称不能为空" }
-        require(s.baseUrl.isNotBlank()) { "Base URL 不能为空" }
-        val portStr = s.port.trim()
-        val portInt = if (portStr.isEmpty()) null else portStr.toIntOrNull()
-        require(portStr.isEmpty() || portInt != null) { "端口格式错误" }
+        val url = s.baseUrl.trim()
+        require(url.isNotEmpty()) { "URL 不能为空" }
+        require(isValidUrl(url)) { "URL 格式错误（需含 http/https 与主机）" }
+        require(s.username.isNotBlank()) { "用户名不能为空（不支持匿名访问）" }
 
         _uiState.update { it.copy(isSaving = true) }
         try {
-            val rootPath = s.rootPath.ifBlank { "/" }
-            val username = s.username.trim().ifBlank { null }
+            val (https, port, rootPath) = parseUrlExtras(url)
+            // baseUrl 存完整 URL（去掉末尾斜杠）；port/https/rootPath 仅为兼容旧 entity 字段
+            val normalizedUrl = url.trimEnd('/')
             val newPassword = s.password.ifBlank { null }
 
             return if (s.isEditing && s.id != null && loadedEntity != null) {
                 val entity = loadedEntity!!.copy(
                     name = s.name,
-                    baseUrl = s.baseUrl,
-                    port = portInt,
+                    baseUrl = normalizedUrl,
+                    port = port,
                     rootPath = rootPath,
-                    username = username,
+                    username = s.username.trim(),
                     authType = s.authType,
-                    https = s.https,
+                    https = https,
                 )
                 repo.updateServer(entity, newPassword)
                 s.id
             } else {
                 repo.addServer(
                     name = s.name,
-                    baseUrl = s.baseUrl,
-                    port = portInt,
+                    baseUrl = normalizedUrl,
+                    port = port,
                     rootPath = rootPath,
-                    username = username,
+                    username = s.username.trim(),
                     password = newPassword,
                     authType = s.authType,
-                    https = s.https,
+                    https = https,
                 )
             }
         } finally {
             _uiState.update { it.copy(isSaving = false) }
         }
+    }
+
+    /** 校验 URL：必须有 http/https scheme 与 host。 */
+    private fun isValidUrl(url: String): Boolean = try {
+        val uri = URI(url)
+        val scheme = uri.scheme?.lowercase()
+        (scheme == "http" || scheme == "https") && !uri.host.isNullOrBlank()
+    } catch (_: URISyntaxException) {
+        false
+    }
+
+    /**
+     * 从完整 URL 解析出兼容字段：
+     * - [https]：scheme 为 https 时 true，否则 false。
+     * - [port]：URL 显式带端口时返回该端口，否则 null。
+     * - [rootPath]：URL 中 host 之后到末尾的路径（已含前导 /，无则 "/"）。
+     *
+     * 这些字段仅为兼容旧 [ServerConfigEntity] schema 保留，仓库与浏览器实际只用 [ServerConfigEntity.baseUrl]。
+     */
+    private fun parseUrlExtras(url: String): Triple<Boolean, Int?, String> {
+        val uri = runCatching { URI(url) }.getOrNull() ?: return Triple(true, null, "/")
+        val https = uri.scheme?.lowercase() != "http"
+        val port = uri.port.takeIf { it > 0 }
+        val rawPath = uri.rawPath ?: ""
+        val rootPath = if (rawPath.isBlank() || rawPath == "/") "/" else rawPath
+        return Triple(https, port, rootPath)
     }
 }

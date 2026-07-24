@@ -1,22 +1,25 @@
 package xa.refile.ui.settings
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import xa.refile.data.prefs.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -28,10 +31,12 @@ import javax.inject.Inject
  * - [availableLanguages]：可选语言列表（code → 显示名），供下拉选择。
  * - [presetId]：当前命名预设 ID，用于在「命名与模板」分组展示「当前：Emby」之类文案。
  * - [forceType]：是否强制指定目录类型（派生自 [SettingsRepository.forceType]：非 null 且非 `auto` 视为开启）。
+ * - [versionName]：应用版本号（取自 PackageInfo），用于「关于」分组展示。
  *
- * 导航跳转子设置页通过一次性 [events] 事件驱动，与 [BackupViewModel] 的 SAF 事件模式一致，
- * 解耦 ViewModel 与 NavigationController。打开浏览器申请 API Key 由 [openTmdbApiKeyApply]
- * 直接发起 ACTION_VIEW Intent（需 Context，已注入）。
+ * 导航跳转子设置页通过一次性 [events] 事件驱动，与 [BackupViewModel] 的 SAF 事件模式一致。
+ *
+ * 「导出调试日志」：[pickLogFile] 发出 [SettingsNavEvent.PickLogFile] 由 Composable 启动 SAF，
+ * [writeDebugLog] 在回调返回 Uri 后通过 `logcat -d` 抓取当前进程日志并以 `.log` 文本写入。
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -64,7 +69,7 @@ class SettingsViewModel @Inject constructor(
         "es-ES" to "Español",
     )
 
-    /** 当前命名预设 ID（PLEX/KODI/EMBY/JELLYFIN/CUSTOM）。 */
+    /** 当前命名预设 ID（EMBY/INFUSE/CUSTOM 或自定义预设 id）。 */
     val presetId: StateFlow<String> = settings.presetId
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), DEFAULT_PRESET)
 
@@ -73,9 +78,20 @@ class SettingsViewModel @Inject constructor(
         .map { !it.isNullOrBlank() && it != FORCE_TYPE_AUTO }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
 
+    /** 应用版本号（取自 PackageInfo；读取失败回退占位串）。 */
+    val versionName: StateFlow<String> = MutableStateFlow(readVersionName()).asStateFlow()
+
     /** 一次性导航事件，由 Composable 收集后调用对应导航回调。 */
     private val _events = MutableSharedFlow<SettingsNavEvent>(extraBufferCapacity = 1)
     val events: SharedFlow<SettingsNavEvent> = _events.asSharedFlow()
+
+    /** 调试日志导出文案（成功/失败），由 Composable 弹 Snackbar。 */
+    private val _logExportResult = MutableStateFlow<String?>(null)
+    val logExportResult: StateFlow<String?> = _logExportResult.asStateFlow()
+
+    /** 是否正在导出调试日志。 */
+    private val _exportingLog = MutableStateFlow(false)
+    val exportingLog: StateFlow<Boolean> = _exportingLog.asStateFlow()
 
     /** 保存 API Key 到 DataStore。 */
     fun setApiKey(value: String) {
@@ -123,20 +139,57 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { _events.emit(SettingsNavEvent.OpenHostsSettings) }
     }
 
-    /** 打开系统浏览器跳转 TMDB API 申请页。 */
-    fun openTmdbApiKeyApply() {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TMDB_API_APPLY_URL))
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        runCatching { context.startActivity(intent) }
+    /** 请求启动 SAF CreateDocument 选择调试日志保存位置（关于分组）。 */
+    fun pickLogFile() {
+        viewModelScope.launch { _events.emit(SettingsNavEvent.PickLogFile) }
     }
+
+    /** SAF 回调返回 Uri 后抓取 logcat 并写入 .log 文本。 */
+    fun writeDebugLog(uri: Uri) {
+        viewModelScope.launch {
+            _exportingLog.value = true
+            try {
+                val log = withContext(Dispatchers.IO) { captureLogcat() }
+                val written = withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { out ->
+                        out.write(log.toByteArray(Charsets.UTF_8))
+                        true
+                    } ?: false
+                }
+                _logExportResult.value = if (written) "调试日志已导出" else "无法写入所选文件"
+            } catch (t: Throwable) {
+                _logExportResult.value = "导出失败：${t.message ?: t.javaClass.simpleName}"
+            } finally {
+                _exportingLog.value = false
+            }
+        }
+    }
+
+    /** 清除调试日志导出文案。 */
+    fun clearLogExportResult() {
+        _logExportResult.value = null
+    }
+
+    /** 抓取当前进程 logcat（dump 一次）。无 READ_LOGS 权限时仅能拿到本进程日志。 */
+    private fun captureLogcat(): String {
+        val pid = android.os.Process.myPid()
+        val process = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "--pid=$pid", "-v", "time"))
+        return process.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+    }
+
+    /** 从 PackageInfo 读取 versionName，失败回退占位。 */
+    private fun readVersionName(): String = runCatching {
+        val pm = context.packageManager
+        val pkg = pm.getPackageInfo(context.packageName, 0)
+        pkg.versionName ?: "unknown"
+    }.getOrDefault("unknown")
 
     private companion object {
         const val TMDB_API_KEY_LENGTH = 32
         const val DEFAULT_LANGUAGE = "zh-CN"
-        const val DEFAULT_PRESET = "PLEX"
+        const val DEFAULT_PRESET = "EMBY"
         const val FORCE_TYPE_AUTO = "auto"
         const val FORCE_TYPE_MOVIE = "movie"
-        const val TMDB_API_APPLY_URL = "https://www.themoviedb.org/settings/api"
     }
 }
 
@@ -150,4 +203,7 @@ sealed interface SettingsNavEvent {
 
     /** 跳转 Hosts 设置。 */
     object OpenHostsSettings : SettingsNavEvent
+
+    /** 触发 SAF CreateDocument 选择调试日志保存位置。 */
+    object PickLogFile : SettingsNavEvent
 }

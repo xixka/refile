@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 
@@ -94,10 +95,14 @@ class WebDavClientTest {
         assertThat(req.path).isEqualTo("/Movies/")
     }
 
-    @Test fun `propfind non success returns empty list`() = runTest {
+    @Test fun `propfind non success throws WebDavException with code`() = runTest {
         server.enqueue(MockResponse().setResponseCode(403))
-        val entries = newClient().propfind("/Movies", 1)
-        assertThat(entries).isEmpty()
+        try {
+            newClient().propfind("/Movies", 1)
+            fail("Expected WebDavException")
+        } catch (e: WebDavException) {
+            assertThat(e.code).isEqualTo(403)
+        }
     }
 
     @Test fun `move sends MOVE with encoded Destination and Overwrite F`() = runTest {

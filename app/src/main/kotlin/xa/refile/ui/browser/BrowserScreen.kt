@@ -362,7 +362,7 @@ private fun BrowserEntryRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = nameColor,
                 fontWeight = if (isSelectableVideo) FontWeight.Medium else FontWeight.Normal,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.height(4.dp))

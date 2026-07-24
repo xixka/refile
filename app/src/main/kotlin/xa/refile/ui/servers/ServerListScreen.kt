@@ -1,36 +1,34 @@
 package xa.refile.ui.servers
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -43,28 +41,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import xa.refile.data.db.ServerConfigEntity
-import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /**
- * 服务器列表页（计划 §M1 SubTask 1.4.1）。
+ * 服务器列表页（计划 §M1 SubTask 1.4.1，按测试反馈调整）。
  *
- * - 顶部栏标题"服务器" + 右上角添加按钮。
- * - 每项一张卡片：名称、Base URL、用户名、密码（仅显示 ••••••，不回显明文，红线）。
- * - 卡片点击进入文件浏览器；左滑露出编辑/删除操作。
+ * - 顶部栏标题"服务器" + 右上角添加按钮 + 设置入口。
+ * - 每项一张卡片（带阴影/elevation 区分），点击进入文件浏览器；
+ *   长按弹出操作菜单（编辑/删除）——替代旧的左滑手势（原左滑方向有 bug，且易误触）。
+ * - 卡片精简展示：仅服务器名 + 完整 URL，其他字段（端口/用户名/密码/根路径/协议）不显示。
  * - 删除前用 [AlertDialog] 二次确认。
  * - 空状态居中提示。
  */
@@ -156,7 +149,13 @@ fun ServerListScreen(
     }
 }
 
-/** 单条服务器卡片，支持左滑露出编辑/删除操作。 */
+/**
+ * 单条服务器卡片：点击进入浏览器，长按弹出编辑/删除菜单。
+ *
+ * 卡片使用 [CardDefaults.cardElevation] 提供阴影以视觉区分每个 WebDAV 配置。
+ * 仅展示名称 + 完整 URL，其他字段按测试反馈隐藏。
+ */
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 private fun ServerRow(
     server: ServerConfigEntity,
@@ -164,145 +163,94 @@ private fun ServerRow(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val revealWidth = 168.dp
-    val revealWidthPx = with(LocalDensity.current) { revealWidth.toPx() }
-    val offsetX = remember(server.id) { Animatable(0f) }
-    val scope = rememberCoroutineScope()
+    var menuExpanded by remember { mutableStateOf(false) }
 
-    Box(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { menuExpanded = true },
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        // 阴影区分每个 WebDAV 配置面板
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp, pressedElevation = 6.dp),
     ) {
-        // 背景：左滑后露出的编辑/删除操作（右对齐）
         Row(
             modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(12.dp)),
-            horizontalArrangement = Arrangement.End,
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier
-                    .width(revealWidth)
-                    .fillMaxHeight(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = {
-                    scope.launch { offsetX.animateTo(0f, spring()) }
-                    onEdit()
-                }) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "编辑",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                }
-                IconButton(onClick = {
-                    scope.launch { offsetX.animateTo(0f, spring()) }
-                    onDelete()
-                }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "删除",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-        }
-
-        // 前景卡片：水平拖动时向左偏移以露出背景操作
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset { IntOffset(-offsetX.value.roundToInt(), 0) }
-                .pointerInput(server.id) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                offsetX.animateTo(
-                                    targetValue = if (offsetX.value < -revealWidthPx / 2f) {
-                                        -revealWidthPx
-                                    } else {
-                                        0f
-                                    },
-                                    animationSpec = spring(),
-                                )
-                            }
-                        },
-                    ) { _, dragAmount ->
-                        scope.launch {
-                            offsetX.snapTo(
-                                (offsetX.value + dragAmount).coerceIn(-revealWidthPx, 0f),
-                            )
-                        }
-                    }
-                }
-                .clickable {
-                    if (offsetX.value != 0f) {
-                        scope.launch { offsetX.animateTo(0f, spring()) }
-                    } else {
-                        onClick()
-                    }
-                },
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface,
-            ),
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Cloud,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = server.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
+            Icon(
+                Icons.Default.Cloud,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = server.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = server.baseUrl,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                server.port?.let {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = "端口：$it",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+            }
+            // 长按亦可点击右侧 MoreVert 触发同一菜单（无障碍/单手友好）
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "更多操作",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "用户名：${server.username ?: "匿名"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "密码：${if (server.encryptedPassword != null) "••••••" else "未设置"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "根路径：${server.rootPath}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = "协议：${if (server.https) "HTTPS" else "HTTP"} · 认证：${server.authType}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("编辑") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onEdit()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("删除") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                            )
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        },
+                    )
+                }
             }
         }
     }
