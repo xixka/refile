@@ -183,7 +183,7 @@ class PreviewViewModel @Inject constructor(
         fm: MatchViewModel.FileMatch,
         rootPath: String,
         preset: Preset,
-        resolvedTemplate: String,
+        resolvedTemplate: String?,
         namingOptions: NamingOptions,
         today: String,
     ): PreviewItem {
