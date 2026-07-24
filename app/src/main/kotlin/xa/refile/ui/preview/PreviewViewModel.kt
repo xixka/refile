@@ -136,16 +136,29 @@ class PreviewViewModel @Inject constructor(
                 }
                 val client = serverRepo.clientFor(entity)
                 webDavClient = client
-                val rootPath = normalizePath(entity.rootPath)
+                // baseUrl 已含路径，浏览/重命名根固定为 "/"（不再追加 entity.rootPath，
+                // 否则会把路径重复拼接）
+                val rootPath = "/"
 
                 val presetId = settings.presetId.first()
                 val customTemplate = settings.templateString.first()
+                val movieTemplate = settings.movieTemplateString.first()
+                val episodeTemplate = settings.episodeTemplateString.first()
                 val namingOptions = settings.visualOptions.first().toNamingOptions()
                 val preset = Preset.byId(presetId)
                 val today = LocalDate.now().toString()
 
                 val items = matches.map { fm ->
-                    renderItem(client, fm, rootPath, preset, customTemplate, namingOptions, today)
+                    // 测试反馈 Item 9：优先用对应类型的独立模板，回退到旧版单模板，再回退到预设。
+                    val resolvedTemplate = when {
+                        fm.parsed.season != null || fm.parsed.episodes.isNotEmpty() ->
+                            episodeTemplate.takeIf { it.isNotBlank() }
+                                ?: customTemplate.takeIf { it.isNotBlank() }
+                        else ->
+                            movieTemplate.takeIf { it.isNotBlank() }
+                                ?: customTemplate.takeIf { it.isNotBlank() }
+                    }
+                    renderItem(client, fm, rootPath, preset, resolvedTemplate, namingOptions, today)
                 }
                 _uiState.update { it.copy(loading = false, previewItems = items) }
                 detectConflicts()
@@ -170,7 +183,7 @@ class PreviewViewModel @Inject constructor(
         fm: MatchViewModel.FileMatch,
         rootPath: String,
         preset: Preset,
-        customTemplate: String,
+        resolvedTemplate: String,
         namingOptions: NamingOptions,
         today: String,
     ): PreviewItem {
@@ -184,7 +197,8 @@ class PreviewViewModel @Inject constructor(
             },
         )
         val isEpisode = media.isEpisode
-        val template = customTemplate.takeIf { it.isNotBlank() }
+        // resolvedTemplate 为空时回退到内置预设对应类型的模板。
+        val template = resolvedTemplate.takeIf { it.isNotBlank() }
             ?: presetRepo.templateFor(preset, isEpisode)
         val fileCtx = FileContext(
             displayName = fileName,

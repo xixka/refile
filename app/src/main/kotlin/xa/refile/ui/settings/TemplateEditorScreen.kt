@@ -3,6 +3,8 @@ package xa.refile.ui.settings
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -35,7 +39,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,14 +63,15 @@ import xa.refile.ui.theme.WarningAmber
 import kotlinx.coroutines.launch
 
 /**
- * 模板编辑器页（计划 §M3 SubTask 3.3.1）。
+ * 模板编辑器页（计划 §M3 SubTask 3.3.1 + 测试反馈 Item 9/10）。
  *
- * - 顶部栏：返回 + 保存按钮。
- * - 预设选择器（Plex/Kodi/Emby/Jellyfin/自定义）。
- * - 模板字符串输入框（多行 monospace），绑定 [TextFieldValue] 跟踪光标。
- * - 变量插入 chip 行（按组横向滚动，点击在光标处插入 `{token}`）。
+ * 按测试反馈 Item 9 改造为 FileBot 风格：
+ * - 顶部 TabRow：电影模板 / 剧集模板，分别编辑。
+ * - 预设选择器：内置 Emby/Infuse + 用户保存的自定义预设；支持另存为/删除。
+ * - 模板字符串输入框（多行 monospace），绑定当前 Tab 对应的模板。
+ * - 变量插入：按组用 [FlowRow] 自动换行（测试反馈 Item 10，避免横向拥挤）。
  * - 可视化选项：分隔符 / 大小写 / 非法字符处理 / 补零位数 Slider。
- * - 实时预览卡片：电影 + 剧集两份示例渲染结果。
+ * - 实时预览卡片：电影 + 剧集两份示例渲染结果（各自用对应模板）。
  * - 保存：写入 DataStore，Snackbar 反馈。
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,14 +80,23 @@ fun TemplateEditorScreen(
     onBack: () -> Unit,
     viewModel: TemplateEditorViewModel = hiltViewModel(),
 ) {
-    val templateField by viewModel.templateField.collectAsStateWithLifecycle()
+    val activeTab by viewModel.activeTab.collectAsStateWithLifecycle()
+    val movieField by viewModel.movieTemplateField.collectAsStateWithLifecycle()
+    val episodeField by viewModel.episodeTemplateField.collectAsStateWithLifecycle()
     val presetId by viewModel.presetId.collectAsStateWithLifecycle()
+    val customPresets by viewModel.customPresets.collectAsStateWithLifecycle()
     val visualOptions by viewModel.visualOptions.collectAsStateWithLifecycle()
     val preview by viewModel.previewResult.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var isSaving by remember { mutableStateOf(false) }
+    var showSavePresetDialog by remember { mutableStateOf(false) }
+
+    val currentField = when (activeTab) {
+        TemplateEditorViewModel.EditorTab.MOVIE -> movieField
+        TemplateEditorViewModel.EditorTab.EPISODE -> episodeField
+    }
 
     val save: () -> Unit = {
         if (!isSaving) {
@@ -123,15 +140,38 @@ fun TemplateEditorScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            // 测试反馈 Item 9：电影/剧集模板分 Tab 编辑
+            TabRow(selectedTabIndex = activeTab.ordinal) {
+                TemplateEditorViewModel.EditorTab.entries.forEach { tab ->
+                    Tab(
+                        selected = activeTab == tab,
+                        onClick = { viewModel.selectTab(tab) },
+                        text = { Text(tab.label) },
+                    )
+                }
+            }
+
             PresetSelector(
                 selectedId = presetId,
+                customPresets = customPresets,
                 onSelect = viewModel::selectPreset,
+                onSavePresetAs = { showSavePresetDialog = true },
+                onDeletePreset = { id ->
+                    scope.launch {
+                        try {
+                            viewModel.deletePreset(id)
+                            snackbarHostState.showSnackbar("已删除预设")
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar("删除失败：${e.message ?: "未知错误"}")
+                        }
+                    }
+                },
             )
 
             OutlinedTextField(
-                value = templateField,
+                value = currentField,
                 onValueChange = viewModel::updateTemplate,
-                label = { Text("模板字符串") },
+                label = { Text("${activeTab.label}字符串") },
                 supportingText = {
                     Text("变量用 {n} {y} {s00e00} 等，管道 {n|upper}，路径用 / 分段")
                 },
@@ -145,6 +185,7 @@ fun TemplateEditorScreen(
                     .heightIn(min = 140.dp),
             )
 
+            // 测试反馈 Item 10：变量用 FlowRow 自动换行，避免横向拥挤
             VariableChips(
                 tokens = viewModel.availableVariables,
                 onInsert = viewModel::insertVariable,
@@ -176,23 +217,58 @@ fun TemplateEditorScreen(
             }
         }
     }
+
+    if (showSavePresetDialog) {
+        SavePresetDialog(
+            onDismiss = { showSavePresetDialog = false },
+            onConfirm = { name ->
+                showSavePresetDialog = false
+                scope.launch {
+                    val id = viewModel.savePresetAs(name)
+                    if (id != null) {
+                        snackbarHostState.showSnackbar("已另存为预设「$name」")
+                    } else {
+                        snackbarHostState.showSnackbar("预设名不能为空")
+                    }
+                }
+            },
+        )
+    }
 }
 
-/** 预设选择下拉。Plex/Kodi/Emby/Jellyfin 来自 [Preset]，外加"自定义"。 */
+/**
+ * 预设选择下拉（测试反馈 Item 9）。
+ *
+ * 列表 = 内置预设（Emby/Infuse） + 用户自定义预设。
+ * 自定义预设可删除（行尾删除按钮）；底部「另存为预设」把当前模板存为新预设。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PresetSelector(
     selectedId: String,
+    customPresets: List<xa.refile.core.naming.CustomPreset>,
     onSelect: (String) -> Unit,
+    onSavePresetAs: () -> Unit,
+    onDeletePreset: (String) -> Unit,
 ) {
-    val options: List<Pair<String, String>> = Preset.entries.map { it.name to it.displayName } +
-        ("CUSTOM" to "自定义")
+    val builtInOptions: List<Pair<String, String>> = Preset.entries.map { it.name to it.displayName }
+    val customOptions: List<Pair<String, String>> = customPresets.map { it.id to it.name }
+    val options = builtInOptions + customOptions
     val selectedLabel = options.firstOrNull { it.first == selectedId }?.second
-        ?: options.first().second
+        ?: options.firstOrNull()?.second ?: Preset.DEFAULT.displayName
     var expanded by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("预设", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        ) {
+            Text("预设", style = MaterialTheme.typography.labelLarge)
+            TextButton(onClick = onSavePresetAs) {
+                Text("另存为预设")
+            }
+        }
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = it },
@@ -212,7 +288,19 @@ private fun PresetSelector(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
             ) {
-                options.forEach { (id, label) ->
+                // 内置预设组标题
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "内置预设",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    enabled = false,
+                    onClick = {},
+                )
+                builtInOptions.forEach { (id, label) ->
                     DropdownMenuItem(
                         text = { Text(label) },
                         onClick = {
@@ -221,12 +309,79 @@ private fun PresetSelector(
                         },
                     )
                 }
+                if (customOptions.isNotEmpty()) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "自定义预设",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        enabled = false,
+                        onClick = {},
+                    )
+                    customOptions.forEach { (id, label) ->
+                        DropdownMenuItem(
+                            text = { Text(label) },
+                            trailingIcon = {
+                                IconButton(onClick = { onDeletePreset(id) }) {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "删除预设",
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onSelect(id)
+                                expanded = false
+                            },
+                        )
+                    }
+                }
             }
         }
     }
 }
 
-/** 变量插入 chip：按组分行，每组横向滚动。 */
+/**
+ * 「另存为预设」对话框（测试反馈 Item 9）。
+ */
+@Composable
+private fun SavePresetDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("另存为预设") },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("预设名称") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(name) }) { Text("保存") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}
+
+/**
+ * 变量插入 chip：按组用 [FlowRow] 自动换行（测试反馈 Item 10）。
+ *
+ * 改进：之前每组一行横向滚动，变量多时拥挤且需横向滑动查找。
+ * 现改为 FlowRow 自动换行，一屏内可见全部变量，点击即插入。
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun VariableChips(
     tokens: List<TemplateEditorViewModel.VariableToken>,
@@ -241,11 +396,10 @@ private fun VariableChips(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 items.forEach { token ->
                     AssistChip(

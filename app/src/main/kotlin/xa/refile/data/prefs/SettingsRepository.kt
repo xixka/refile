@@ -6,10 +6,13 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import xa.refile.core.backup.HostsConfig
+import xa.refile.core.naming.CustomPreset
 import xa.refile.core.naming.NamingOptions
+import xa.refile.core.naming.Preset
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,9 +23,12 @@ import javax.inject.Singleton
  * 基于 Preferences DataStore 持久化：
  * - [apiKey]：TMDB API Key（敏感，不进日志）。
  * - [language]：TMDB 请求语言，默认 `zh-CN`。
- * - [presetId]：命名预设，默认 `PLEX`。
+ * - [presetId]：命名预设，默认 `EMBY`。
  * - [forceType]：强制目录类型（`null`/`auto`/`movie`/`tv`）。
- * - [templateString]：用户自定义模板字符串（Task 3.3 模板编辑器）。
+ * - [templateString]：用户自定义模板字符串（兼容旧版，单模板）。
+ * - [movieTemplateString]：电影模板字符串（测试反馈 Item 9，与剧集分离）。
+ * - [episodeTemplateString]：剧集模板字符串（测试反馈 Item 9）。
+ * - [customPresets]：用户保存的自定义预设列表（测试反馈 Item 9）。
  * - [visualOptions]：命名可视化选项（分隔符/大小写/非法字符处理/补零位数，Task 3.3）。
  * - [hostsConfig]：自定义 Hosts 配置（开关 + 域名→IP 条目，Task 5.3.5），以 JSON 字符串持久化。
  *
@@ -40,14 +46,33 @@ class SettingsRepository @Inject constructor(
     /** TMDB 请求语言，默认简体中文。 */
     val language: Flow<String> = context.dataStore.data.map { it[KEY_LANGUAGE] ?: DEFAULT_LANGUAGE }
 
-    /** 命名预设 ID，默认 PLEX。 */
+    /** 命名预设 ID，默认 EMBY。 */
     val presetId: Flow<String> = context.dataStore.data.map { it[KEY_PRESET_ID] ?: DEFAULT_PRESET }
 
     /** 强制目录类型；null/auto 表示自动识别。 */
     val forceType: Flow<String?> = context.dataStore.data.map { it[KEY_FORCE_TYPE] }
 
-    /** 用户自定义模板字符串；空串表示尚未设置（由调用方回退到预设）。 */
+    /** 用户自定义模板字符串（兼容旧版单模板）；空串表示尚未设置（由调用方回退到预设）。 */
     val templateString: Flow<String> = context.dataStore.data.map { it[KEY_TEMPLATE_STRING] ?: "" }
+
+    /** 电影模板字符串（测试反馈 Item 9）；空串表示回退到 [templateString] 或预设。 */
+    val movieTemplateString: Flow<String> = context.dataStore.data.map {
+        it[KEY_MOVIE_TEMPLATE] ?: ""
+    }
+
+    /** 剧集模板字符串（测试反馈 Item 9）；空串表示回退到 [templateString] 或预设。 */
+    val episodeTemplateString: Flow<String> = context.dataStore.data.map {
+        it[KEY_EPISODE_TEMPLATE] ?: ""
+    }
+
+    /** 用户保存的自定义预设列表（测试反馈 Item 9）。 */
+    val customPresets: Flow<List<CustomPreset>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_CUSTOM_PRESETS]?.let { json ->
+            runCatching {
+                templateJson.decodeFromString(ListSerializer(CustomPreset.serializer()), json)
+            }.getOrNull()
+        } ?: emptyList()
+    }
 
     /** 命名可视化选项（分隔符/大小写/非法字符处理/补零位数）。 */
     val visualOptions: Flow<VisualOptions> = context.dataStore.data.map { prefs ->
@@ -99,6 +124,25 @@ class SettingsRepository @Inject constructor(
         context.dataStore.edit { it[KEY_TEMPLATE_STRING] = value }
     }
 
+    /** 保存电影模板字符串（测试反馈 Item 9）。 */
+    suspend fun setMovieTemplateString(value: String) {
+        context.dataStore.edit { it[KEY_MOVIE_TEMPLATE] = value }
+    }
+
+    /** 保存剧集模板字符串（测试反馈 Item 9）。 */
+    suspend fun setEpisodeTemplateString(value: String) {
+        context.dataStore.edit { it[KEY_EPISODE_TEMPLATE] = value }
+    }
+
+    /** 保存自定义预设列表（测试反馈 Item 9）。 */
+    suspend fun setCustomPresets(value: List<CustomPreset>) {
+        val json = templateJson.encodeToString(
+            ListSerializer(CustomPreset.serializer()),
+            value,
+        )
+        context.dataStore.edit { it[KEY_CUSTOM_PRESETS] = json }
+    }
+
     /** 保存可视化选项（分隔符以单字符字符串存储）。 */
     suspend fun setVisualOptions(value: VisualOptions) {
         context.dataStore.edit {
@@ -117,12 +161,15 @@ class SettingsRepository @Inject constructor(
 
     private companion object {
         const val DEFAULT_LANGUAGE = "zh-CN"
-        const val DEFAULT_PRESET = "PLEX"
+        const val DEFAULT_PRESET = Preset.DEFAULT.name
         private val KEY_API_KEY = stringPreferencesKey("api_key")
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private val KEY_PRESET_ID = stringPreferencesKey("preset_id")
         private val KEY_FORCE_TYPE = stringPreferencesKey("force_type")
         private val KEY_TEMPLATE_STRING = stringPreferencesKey("template_string")
+        private val KEY_MOVIE_TEMPLATE = stringPreferencesKey("movie_template")
+        private val KEY_EPISODE_TEMPLATE = stringPreferencesKey("episode_template")
+        private val KEY_CUSTOM_PRESETS = stringPreferencesKey("custom_presets")
         private val KEY_SEPARATOR = stringPreferencesKey("visual_separator")
         private val KEY_CASE_MODE = stringPreferencesKey("visual_case_mode")
         private val KEY_ILLEGAL = stringPreferencesKey("visual_illegal_char")
@@ -131,6 +178,12 @@ class SettingsRepository @Inject constructor(
 
         /** Hosts 配置 JSON 实例（容错：未知字段忽略，便于备份文件向前兼容）。 */
         private val hostsJson = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
+
+        /** 自定义预设/模板 JSON 实例（容错 + 默认值编码）。 */
+        private val templateJson = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true
         }

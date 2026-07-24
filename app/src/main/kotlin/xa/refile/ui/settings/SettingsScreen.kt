@@ -1,5 +1,7 @@
 package xa.refile.ui.settings
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,14 +24,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -39,6 +42,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -67,7 +72,7 @@ import xa.refile.ui.theme.SuccessGreen
  * 设置中心页（计划 §M5 Task 5.4）。
  *
  * 作为所有子设置功能的统一入口，按分组卡片组织：
- * - 组 1 TMDB 配置：API Key 输入（密码态可切换）+ 校验状态 + 申请按钮 + 语言偏好下拉 + 强制目录类型开关。
+ * - 组 1 TMDB 配置：API Key 输入（密码态可切换）+ 校验状态 + 语言偏好下拉 + 强制目录类型开关（测试反馈 Item 2：移除申请 TMDB API 按钮，国内无需）。
  * - 组 2 命名与模板：模板编辑器入口（展示当前预设）+ 命名选项入口。
  * - 组 3 数据管理：备份与恢复 + 历史记录。
  * - 组 4 网络：Hosts 设置。
@@ -96,6 +101,9 @@ fun SettingsScreen(
     val language by viewModel.language.collectAsStateWithLifecycle()
     val presetId by viewModel.presetId.collectAsStateWithLifecycle()
     val forceType by viewModel.forceType.collectAsStateWithLifecycle()
+    val versionName by viewModel.versionName.collectAsStateWithLifecycle()
+    val exportingLog by viewModel.exportingLog.collectAsStateWithLifecycle()
+    val logExportResult by viewModel.logExportResult.collectAsStateWithLifecycle()
 
     // API Key 输入框本地态：避免每次按键直接回写 DataStore 造成光标跳动
     var apiKeyInput by rememberSaveable { mutableStateOf("") }
@@ -105,6 +113,14 @@ fun SettingsScreen(
     }
     var showApiKey by rememberSaveable { mutableStateOf(false) }
 
+    // SAF 启动器：导出调试日志（CreateDocument，文本 .log）
+    val logLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain"),
+    ) { uri ->
+        if (uri != null) viewModel.writeDebugLog(uri)
+    }
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // 收集一次性导航事件，分发到对应导航回调
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -112,12 +128,23 @@ fun SettingsScreen(
                 SettingsNavEvent.OpenTemplateEditor -> onOpenTemplateEditor()
                 SettingsNavEvent.OpenBackup -> onOpenBackup()
                 SettingsNavEvent.OpenHostsSettings -> onOpenHostsSettings()
+                SettingsNavEvent.PickLogFile ->
+                    logLauncher.launch("refile-debug-${System.currentTimeMillis()}.log")
             }
         }
     }
 
+    // 调试日志导出结果弹 Snackbar
+    LaunchedEffect(logExportResult) {
+        logExportResult?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearLogExportResult()
+        }
+    }
+
     val presetLabel = remember(presetId) {
-        if (presetId == PRESET_CUSTOM) "自定义" else Preset.byId(presetId).displayName
+        // 内置预设（EMBY/INFUSE）按 id 取显示名；其余（含旧版 CUSTOM 与用户新建预设）显示「自定义」
+        Preset.entries.firstOrNull { it.name == presetId }?.displayName ?: "自定义"
     }
 
     Scaffold(
@@ -131,6 +158,7 @@ fun SettingsScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -178,19 +206,10 @@ fun SettingsScreen(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = if (apiKeyValid) "Key 已配置" else "请前往 themoviedb.org 申请 API Key",
+                            text = if (apiKeyValid) "Key 已配置" else "未配置",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (apiKeyValid) SuccessGreen else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-
-                    Button(
-                        onClick = viewModel::openTmdbApiKeyApply,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(Icons.Default.OpenInNew, contentDescription = null)
-                        Spacer(Modifier.width(8.dp))
-                        Text("申请 API Key")
                     }
 
                     Spacer(Modifier.size(4.dp))
@@ -235,13 +254,7 @@ fun SettingsScreen(
                     SettingsRow(
                         icon = Icons.Default.Description,
                         title = "模板编辑器",
-                        subtitle = "当前：$presetLabel",
-                        onClick = viewModel::openTemplateEditor,
-                    )
-                    SettingsRow(
-                        icon = Icons.Default.Tune,
-                        title = "命名选项",
-                        subtitle = "分隔符 / 大小写 / 非法字符 / 补零",
+                        subtitle = "当前：$presetLabel · 分隔符 / 大小写 / 非法字符 / 补零",
                         onClick = viewModel::openTemplateEditor,
                     )
                 }
@@ -277,14 +290,50 @@ fun SettingsScreen(
                 }
             }
 
-            // ---------- 底部版本号 ----------
+            // ---------- 组 5：关于 ----------
             item {
-                Text(
-                    text = "WebDAV Renamer v1.0.0",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                )
+                SettingsSection(title = "关于") {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "WebDAV Renamer",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                text = "版本 $versionName",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                    Button(
+                        onClick = viewModel::pickLogFile,
+                        enabled = !exportingLog,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        if (exportingLog) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("导出中…")
+                        } else {
+                            Text("导出调试日志")
+                        }
+                    }
+                }
             }
         }
     }
@@ -421,5 +470,3 @@ private fun LanguageDropdown(
         }
     }
 }
-
-private const val PRESET_CUSTOM = "CUSTOM"

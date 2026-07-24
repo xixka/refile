@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import xa.refile.core.backup.HostEntry
 import xa.refile.core.backup.HostPresets
 import xa.refile.core.backup.HostsConfig
+import xa.refile.core.backup.HostsIpResolver
 import xa.refile.core.backup.HostsSpeedTest
 import xa.refile.core.backup.HostsSpeedTest.IpSpeedTestResult
 import xa.refile.data.prefs.SettingsRepository
@@ -36,7 +37,7 @@ import javax.inject.Inject
  * - [testConnection]：测指定 hostname 全部 IP。
  * - [testAllConnections]：测所有 hostname，并行。
  * - [autoPickFastest]：测速后选延迟最低可用 IP 设为该 hostname 唯一 ips（§5.3.3）。
- * - [applyPreset]：把预设域名填入条目（ips 留空待用户测速）。
+ * - [applyPreset]：把预设域名填入条目，并通过 DoH 自动解析候选 IP（测试反馈 Item 13）。
  *
  * Hosts 写入全部经 [SettingsRepository.setHostsConfig] 落盘，OkHttpClient 在使用方
  * （[xa.refile.core.tmdb.TmdbClient] 与 [xa.refile.data.repository.ServerRepository]）
@@ -46,6 +47,7 @@ import javax.inject.Inject
 class HostsSettingsViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val speedTest: HostsSpeedTest,
+    private val ipResolver: HostsIpResolver,
 ) : ViewModel() {
 
     /** 预设按钮展示用：name → 标签。 */
@@ -59,9 +61,17 @@ class HostsSettingsViewModel @Inject constructor(
     private val _testing = MutableStateFlow(false)
     val testing: StateFlow<Boolean> = _testing.asStateFlow()
 
+    /** 是否正在解析 IP（DoH）。 */
+    private val _resolving = MutableStateFlow(false)
+    val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
+
     /** 各 hostname 的测速结果。 */
     private val _testResults = MutableStateFlow<Map<String, List<IpSpeedTestResult>>>(emptyMap())
     val testResults: StateFlow<Map<String, List<IpSpeedTestResult>>> = _testResults.asStateFlow()
+
+    /** 解析/测速的提示消息（成功/失败），由 Composable 弹 Snackbar。 */
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
 
     /** 预设列表，供 UI 渲染按钮行。 */
     val presetOptions: List<PresetOption> = listOf(
@@ -163,7 +173,13 @@ class HostsSettingsViewModel @Inject constructor(
         }
     }
 
-    /** 应用预设（添加对应 hostname 条目，ips 留空待测速）。 */
+    /**
+     * 应用预设（添加对应 hostname 条目，并通过 DoH 自动解析候选 IP）。
+     *
+     * 测试反馈 Item 13：原实现 ips 留空导致「测试」「自动选优」按钮不可用。
+     * 现在添加 hostname 后立即通过 [HostsIpResolver] 解析候选 IP 并填入，
+     * 解析失败时 ips 仍为空，用户可手动填入或稍后点「解析 IP」重试。
+     */
     fun applyPreset(presetName: String) {
         val hostnamesToAdd = when (presetName) {
             PRESET_TMDB_API -> listOf(HostPresets.TMDB_API)
@@ -174,6 +190,7 @@ class HostsSettingsViewModel @Inject constructor(
         if (hostnamesToAdd.isEmpty()) return
         viewModelScope.launch {
             val current = settings.hostsConfig.first()
+            // 先插入 hostname 条目（ips 暂空），再逐个 DoH 解析填充
             val newEntries = hostnamesToAdd.fold(current.entries) { acc, hostname ->
                 if (acc.any { it.hostname.equals(hostname, ignoreCase = true) }) {
                     acc // 已存在则不覆盖（保留用户已配置的 ips）
@@ -182,7 +199,59 @@ class HostsSettingsViewModel @Inject constructor(
                 }
             }
             settings.setHostsConfig(current.copy(entries = newEntries))
+
+            // 对新增（ips 为空）的 hostname 自动 DoH 解析候选 IP
+            _resolving.value = true
+            try {
+                val toResolve = hostnamesToAdd.filter { hostname ->
+                    newEntries.firstOrNull { it.hostname.equals(hostname, ignoreCase = true) }?.ips.isNullOrEmpty()
+                }
+                var resolvedCount = 0
+                toResolve.forEach { hostname ->
+                    val ips = ipResolver.resolve(hostname)
+                    if (ips.isNotEmpty()) {
+                        editHost(hostname, ips)
+                        resolvedCount++
+                    }
+                }
+                _message.value = if (toResolve.isEmpty()) {
+                    "预设已应用（域名已存在）"
+                } else if (resolvedCount == toResolve.size) {
+                    "预设已应用，已解析 ${toResolve.size} 个域名的候选 IP"
+                } else {
+                    "预设已应用，${resolvedCount}/${toResolve.size} 个域名解析成功，未成功的可手动填入 IP"
+                }
+            } finally {
+                _resolving.value = false
+            }
         }
+    }
+
+    /**
+     * 通过 DoH 解析指定 hostname 的候选 IP 并更新条目（测试反馈 Item 13）。
+     *
+     * 供 UI「解析 IP」按钮调用：当 ips 为空或需刷新时重新解析。
+     */
+    fun resolveIps(hostname: String) {
+        viewModelScope.launch {
+            _resolving.value = true
+            try {
+                val ips = ipResolver.resolve(hostname)
+                if (ips.isNotEmpty()) {
+                    editHost(hostname, ips)
+                    _message.value = "已解析 ${ips.size} 个候选 IP"
+                } else {
+                    _message.value = "解析失败，请检查网络或手动填入 IP"
+                }
+            } finally {
+                _resolving.value = false
+            }
+        }
+    }
+
+    /** 清除提示消息。 */
+    fun clearMessage() {
+        _message.value = null
     }
 
     /** 取当前 hostname 的 ips 列表。 */

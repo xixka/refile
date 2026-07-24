@@ -32,11 +32,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +63,7 @@ import xa.refile.ui.theme.WarningAmber
  * 布局：
  * - TopAppBar「Hosts 设置」+ 返回。
  * - 总开关 [Switch]（启用/禁用 [xa.refile.core.backup.HostsDns]）。
- * - 预设按钮行：TMDB API / TMDB Image / 默认候选，点击填入对应 hostname（ips 留空待测速）。
+ * - 预设按钮行：TMDB API / TMDB Image / 默认候选，点击填入对应 hostname 并自动 DoH 解析候选 IP。
  * - 「新增 Host」按钮 → 弹出编辑对话框。
  * - hostname 列表（LazyColumn）：每行 hostname + IP 列表 + 测试/自动选优/编辑/删除按钮 + 测速结果。
  * - 测速中显示 [CircularProgressIndicator]。
@@ -74,7 +77,19 @@ fun HostsSettingsScreen(
 ) {
     val config by viewModel.hostsConfig.collectAsStateWithLifecycle()
     val testing by viewModel.testing.collectAsStateWithLifecycle()
+    val resolving by viewModel.resolving.collectAsStateWithLifecycle()
     val testResults by viewModel.testResults.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 解析/测速提示消息弹 Snackbar
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
 
     // 新增对话框状态：非 null 表示正在新增
     var addingNew by remember { mutableStateOf(false) }
@@ -92,6 +107,7 @@ fun HostsSettingsScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -101,7 +117,7 @@ fun HostsSettingsScreen(
             ) {
                 Button(
                     onClick = { viewModel.testAllConnections() },
-                    enabled = !testing && config.entries.isNotEmpty(),
+                    enabled = !testing && !resolving && config.entries.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (testing) {
@@ -200,9 +216,11 @@ fun HostsSettingsScreen(
                 HostEntryCard(
                     entry = entry,
                     testing = testing,
+                    resolving = resolving,
                     results = testResults[entry.hostname],
                     onTest = { viewModel.testConnection(entry.hostname) },
                     onAutoPick = { viewModel.autoPickFastest(entry.hostname) },
+                    onResolve = { viewModel.resolveIps(entry.hostname) },
                     onEdit = { editingHost = entry.hostname },
                     onRemove = { viewModel.removeHost(entry.hostname) },
                 )
@@ -249,9 +267,11 @@ fun HostsSettingsScreen(
 private fun HostEntryCard(
     entry: HostEntry,
     testing: Boolean,
+    resolving: Boolean,
     results: List<IpSpeedTestResult>?,
     onTest: () -> Unit,
     onAutoPick: () -> Unit,
+    onResolve: () -> Unit,
     onEdit: () -> Unit,
     onRemove: () -> Unit,
 ) {
@@ -293,7 +313,7 @@ private fun HostEntryCard(
             // IP 列表
             if (entry.ips.isEmpty()) {
                 Text(
-                    text = "（未配置 IP，点击编辑添加候选 IP，每行一个）",
+                    text = "（未配置 IP，点击「解析 IP」自动获取或手动编辑填入）",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -329,15 +349,29 @@ private fun HostEntryCard(
             ) {
                 Button(
                     onClick = onTest,
-                    enabled = !testing && entry.ips.isNotEmpty(),
+                    enabled = !testing && !resolving && entry.ips.isNotEmpty(),
                 ) {
                     Text("测试")
                 }
                 OutlinedButton(
                     onClick = onAutoPick,
-                    enabled = !testing && entry.ips.size > 1,
+                    enabled = !testing && !resolving && entry.ips.size > 1,
                 ) {
                     Text("自动选优")
+                }
+                // 测试反馈 Item 13：通过 DoH 自动解析候选 IP
+                OutlinedButton(
+                    onClick = onResolve,
+                    enabled = !testing && !resolving,
+                ) {
+                    if (resolving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Text("解析 IP")
+                    }
                 }
             }
         }

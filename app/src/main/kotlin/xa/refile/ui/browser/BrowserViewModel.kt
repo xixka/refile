@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import xa.refile.core.webdav.MediaFileTypes
 import xa.refile.core.webdav.WebDavClient
 import xa.refile.core.webdav.WebDavEntry
+import xa.refile.core.webdav.WebDavException
 import xa.refile.data.crypto.KeystoreCrypto
 import xa.refile.data.repository.ServerRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -61,7 +62,11 @@ class BrowserViewModel @Inject constructor(
 
     /**
      * 取服务器配置，构造 [WebDavClient] 并加载根目录。
-     * 构造 baseUrl 的方式与 [ServerRepository] 内部 buildFullBaseUrl 一致。
+     *
+     * 按测试反馈简化：[ServerConfigEntity.baseUrl] 已存完整 URL（含 scheme/host/port/路径），
+     * 直接作为 WebDavClient baseUrl 使用，不再用 https/port 字段拼装。
+     * 兼容旧数据：缺 scheme 时按 https 字段补 `https://`/`http://`。
+     * 浏览根路径固定为 "/"（WebDavClient 会自动补末尾斜杠请求 baseUrl 本身）。
      */
     suspend fun init(serverId: Long) {
         _uiState.update { it.copy(loading = true, error = null) }
@@ -70,22 +75,29 @@ class BrowserViewModel @Inject constructor(
             _uiState.update { it.copy(loading = false, error = "未找到服务器配置") }
             return
         }
-        val scheme = if (entity.https) "https" else "http"
-        val host = entity.baseUrl
-            .trim()
-            .removePrefix("https://")
-            .removePrefix("http://")
-            .trimEnd('/')
-        val fullBaseUrl = if (entity.port != null) "$scheme://$host:${entity.port}" else "$scheme://$host"
+        val raw = entity.baseUrl.trim()
+        val fullBaseUrl = if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            raw.trimEnd('/')
+        } else {
+            val scheme = if (entity.https) "https" else "http"
+            val host = raw.removePrefix("https://").removePrefix("http://").trimEnd('/')
+            if (entity.port != null) "$scheme://$host:${entity.port}" else "$scheme://$host"
+        }
         val password = entity.encryptedPassword?.let { crypto.decrypt(it) }
         webDavClient = WebDavClient(fullBaseUrl, entity.username, password)
-        val root = normalizePath(entity.rootPath)
-        _uiState.update { it.copy(serverName = entity.name, rootPath = root, currentPath = root) }
-        loadDirectory(root)
+        _uiState.update {
+            it.copy(serverName = entity.name, rootPath = "/", currentPath = "/")
+        }
+        loadDirectory("/")
     }
 
     /**
      * 对 [path] 发 PROPFIND Depth 1，过滤掉返回的第一项（当前目录本身）并排序后写入状态。
+     *
+     * 错误区分（测试反馈 Item 5）：
+     * - [WebDavException]：HTTP 错误。401→认证失败；404→路径不存在；其余→按状态码提示。
+     * - 成功但解析为空（raw 为空）：服务器返回了非 multistatus 内容，提示检查配置。
+     * - 成功且 raw 非空：即使 children 为空（空目录）也属正常，不报错。
      *
      * SubTask 1.5.6：PROPFIND 一次性返回，列表项 > [LARGE_DIR_THRESHOLD] 时仅记 warning；
      * LazyColumn 自身虚拟化，无需分页。
@@ -101,6 +113,7 @@ class BrowserViewModel @Inject constructor(
             try {
                 val raw = client.propfind(normalized, depth = 1)
                 if (raw.isEmpty()) {
+                    // 成功（2xx/207）但解析不到任何条目：服务器响应非标准 multistatus。
                     _uiState.update {
                         it.copy(
                             loading = false,
@@ -110,7 +123,7 @@ class BrowserViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                // 过滤掉返回的第一项（当前目录本身）
+                // 过滤掉返回的第一项（当前目录本身）。children 为空即空目录，属正常。
                 val children = raw.drop(1)
                 if (children.size > LARGE_DIR_THRESHOLD) {
                     Log.w(TAG, "Large directory detected: ${children.size} entries under '$normalized'")
@@ -122,9 +135,19 @@ class BrowserViewModel @Inject constructor(
                         error = null,
                     )
                 }
+            } catch (e: WebDavException) {
+                val msg = when (e.code) {
+                    401 -> "认证失败，请检查用户名和密码"
+                    403 -> "无访问权限（403）"
+                    404 -> "路径不存在（404），请检查 URL"
+                    405, 501 -> "服务器不支持 WebDAV PROPFIND（${e.code}）"
+                    in 500..599 -> "服务器错误（${e.code}），请稍后重试"
+                    else -> "无法读取目录（${e.code}），请检查路径或服务器配置"
+                }
+                _uiState.update { it.copy(loading = false, error = msg) }
             } catch (t: Throwable) {
                 _uiState.update {
-                    it.copy(loading = false, error = "加载失败：${t.message ?: "未知错误"}")
+                    it.copy(loading = false, error = "网络错误：${t.message ?: "无法连接服务器"}")
                 }
             }
         }

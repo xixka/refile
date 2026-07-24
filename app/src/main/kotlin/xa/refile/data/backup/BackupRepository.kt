@@ -47,6 +47,8 @@ class BackupRepository @Inject constructor(
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
+        prettyPrint = true
+        prettyPrintIndent = "  "
     }
 
     /**
@@ -168,6 +170,9 @@ class BackupRepository @Inject constructor(
             settings.setLanguage(language)
             settings.setPresetId(presetId)
             settings.setTemplateString(templateString)
+            // 测试反馈 Item 9：电影/剧集模板分离备份恢复（兼容旧版空值）
+            if (movieTemplateString.isNotBlank()) settings.setMovieTemplateString(movieTemplateString)
+            if (episodeTemplateString.isNotBlank()) settings.setEpisodeTemplateString(episodeTemplateString)
             settings.setVisualOptions(visualOptions.toVisualOptions())
         }
 
@@ -192,6 +197,8 @@ class BackupRepository @Inject constructor(
         val language = settings.language.first()
         val presetId = settings.presetId.first()
         val templateString = settings.templateString.first()
+        val movieTemplate = settings.movieTemplateString.first()
+        val episodeTemplate = settings.episodeTemplateString.first()
         val visualOptions = settings.visualOptions.first()
         val hostsConfig = settings.hostsConfig.first()
 
@@ -200,6 +207,8 @@ class BackupRepository @Inject constructor(
             language = language,
             presetId = presetId,
             templateString = templateString,
+            movieTemplateString = movieTemplate,
+            episodeTemplateString = episodeTemplate,
             visualOptions = visualOptions.toSnapshot(),
         )
         val serverSnapshots = servers.map { it.toSnapshot(withPasswords) }
@@ -228,12 +237,10 @@ class BackupRepository @Inject constructor(
 
     /** 根据预设 id 与模板串构造单条模板快照。 */
     private fun buildTemplateSnapshot(presetId: String, templateString: String): TemplateSnapshot {
-        val isCustom = presetId == PRESET_CUSTOM || templateString.isBlank()
-        val name = if (presetId == PRESET_CUSTOM) {
-            "自定义"
-        } else {
-            runCatching { Preset.byId(presetId).displayName }.getOrDefault(presetId)
-        }
+        // 内置预设（EMBY/INFUSE）按 id 取显示名；其余（含旧版 CUSTOM 与用户新建自定义预设）视为自定义
+        val builtin = Preset.entries.firstOrNull { it.name == presetId }
+        val isCustom = builtin == null || templateString.isBlank()
+        val name = builtin?.displayName ?: "自定义"
         return TemplateSnapshot(
             id = presetId.ifBlank { PRESET_CUSTOM },
             name = name,
@@ -256,6 +263,8 @@ class BackupRepository @Inject constructor(
             language = settings.language.first(),
             presetId = settings.presetId.first(),
             templateString = settings.templateString.first(),
+            movieTemplateString = settings.movieTemplateString.first(),
+            episodeTemplateString = settings.episodeTemplateString.first(),
             visualOptions = settings.visualOptions.first().toSnapshot(),
         )
         val settingsChanged = curSettings != payload.settings

@@ -89,8 +89,11 @@ class ServerRepository @Inject constructor(
     /**
      * 测试与目标服务器的连通性。
      *
-     * 解密存储的密码，根据 [ServerConfigEntity.https] + host + port 拼出完整 baseUrl，
-     * 构造 [WebDavClient] 并对其 rootPath 发起 PROPFIND Depth 0 测试。
+     * 解密存储的密码，按 [buildFullBaseUrl] 取完整 baseUrl，构造 [WebDavClient] 并对根
+     * （即 baseUrl 本身）发起 PROPFIND Depth 0 测试。
+     *
+     * 按测试反馈简化：baseUrl 已含路径，不再追加 [ServerConfigEntity.rootPath]，
+     * 否则会把路径重复拼接（如 `.../dav/dav`）。统一传 "/" 由 [WebDavClient] 补末尾斜杠。
      *
      * 仅做连通性/认证探测，不下载文件内容。
      */
@@ -98,13 +101,13 @@ class ServerRepository @Inject constructor(
         val decryptedPassword = entity.encryptedPassword?.let { crypto.decrypt(it) }
         val fullBaseUrl = buildFullBaseUrl(entity)
         val client = WebDavClient(fullBaseUrl, entity.username, decryptedPassword)
-        return client.testConnection(entity.rootPath)
+        return client.testConnection("/")
     }
 
     /**
      * 构造已带认证拦截器的 [WebDavClient]（Task 3.4 预览页冲突检测/伴随文件发现复用）。
      *
-     * 解密存储的密码，按 [buildFullBaseUrl] 拼出完整 baseUrl 后构造 [WebDavClient]。
+     * 解密存储的密码，按 [buildFullBaseUrl] 取完整 baseUrl 后构造 [WebDavClient]。
      * 与 [testConnection] 共用同一套 baseUrl 构造逻辑，避免在调用方（预览页 ViewModel）
      * 重复实现。
      *
@@ -122,20 +125,20 @@ class ServerRepository @Inject constructor(
     }
 
     /**
-     * 根据 [ServerConfigEntity.https] 标志、host（自 baseUrl 去掉 scheme）与可选 port
-     * 拼出完整 baseUrl，如 `https://dav.example.com:8443`。
+     * 取用于构造 [WebDavClient] 的完整 baseUrl。
+     *
+     * 按测试反馈简化：[ServerConfigEntity.baseUrl] 已存完整 URL（含 scheme/host/port/路径，
+     * 如 `https://dav.example.com:8443/dav`），这里直接规范化返回，不再用 https/port 字段拼装。
+     * 兼容旧数据：若 baseUrl 缺 scheme（如 `dav.example.com`），按 https 字段补 `https://`/`http://`。
      */
     private fun buildFullBaseUrl(entity: ServerConfigEntity): String {
-        val scheme = if (entity.https) "https" else "http"
-        val host = entity.baseUrl
-            .trim()
-            .removePrefix("https://")
-            .removePrefix("http://")
-            .trimEnd('/')
-        return if (entity.port != null) {
-            "$scheme://$host:${entity.port}"
+        val raw = entity.baseUrl.trim()
+        return if (raw.startsWith("http://") || raw.startsWith("https://")) {
+            raw.trimEnd('/')
         } else {
-            "$scheme://$host"
+            val scheme = if (entity.https) "https" else "http"
+            val host = raw.removePrefix("https://").removePrefix("http://").trimEnd('/')
+            if (entity.port != null) "$scheme://$host:${entity.port}" else "$scheme://$host"
         }
     }
 }
