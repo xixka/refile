@@ -3,6 +3,7 @@ package xa.refile.data
 import android.content.Context
 import androidx.room.Room
 import androidx.work.WorkManager
+import xa.refile.core.backup.HostsIpResolver
 import xa.refile.core.backup.HostsSpeedTest
 import xa.refile.core.naming.PresetRepository
 import xa.refile.data.crypto.KeystoreCrypto
@@ -82,6 +83,13 @@ object HostsModule {
     @Provides
     @Singleton
     fun provideHostsSpeedTest(): HostsSpeedTest = HostsSpeedTest()
+
+    /**
+     * Hosts DoH IP 解析器（测试反馈 Item 13）。无状态工具类，单例即可。
+     */
+    @Provides
+    @Singleton
+    fun provideHostsIpResolver(): HostsIpResolver = HostsIpResolver()
 }
 
 @Module

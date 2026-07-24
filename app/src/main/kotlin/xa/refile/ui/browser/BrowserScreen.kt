@@ -362,8 +362,7 @@ private fun BrowserEntryRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = nameColor,
                 fontWeight = if (isSelectableVideo) FontWeight.Medium else FontWeight.Normal,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                // 测试反馈 Item 6：文件名太长时换行完整显示，不截断
             )
             Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
