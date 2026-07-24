@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-release:
@@ -38,3 +38,17 @@ jobs:
           name: app-release-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      - name: Publish dev build to GitHub Releases
+        if: github.ref == 'refs/heads/dev'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev-${{ github.sha }}
+          name: Dev Build ${{ github.sha }}
+          body: |
+            Automated dev branch build.
+
+            - Branch: ${{ github.ref_name }}
+            - Commit: ${{ github.sha }}
+          prerelease: true
+          files: app/build/outputs/apk/release/*.apk
