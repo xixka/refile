@@ -23,13 +23,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -77,9 +74,6 @@ fun ServerListScreen(
     onAddServer: () -> Unit,
     onEditServer: (Long) -> Unit,
     onOpenBrowser: (Long) -> Unit,
-    onOpenHistory: () -> Unit = {},
-    onOpenHosts: () -> Unit = {},
-    onOpenBackup: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
     viewModel: ServerListViewModel = hiltViewModel(),
 ) {
@@ -91,15 +85,6 @@ fun ServerListScreen(
             TopAppBar(
                 title = { Text("服务器") },
                 actions = {
-                    IconButton(onClick = onOpenHistory) {
-                        Icon(Icons.Default.History, contentDescription = "历史记录")
-                    }
-                    IconButton(onClick = onOpenHosts) {
-                        Icon(Icons.Default.Public, contentDescription = "Hosts 设置")
-                    }
-                    IconButton(onClick = onOpenBackup) {
-                        Icon(Icons.Default.Backup, contentDescription = "备份与恢复")
-                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "设置")
                     }
