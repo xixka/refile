@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.webdavrenamer"
+    namespace = "xa.refile"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.webdavrenamer"
+        applicationId = "xa.refile"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -23,15 +23,14 @@ android {
     }
 
     signingConfigs {
-        // Debug keystore so pre-release APKs are installable on devices.
-        // Replace with a dedicated release keystore (via env vars) for production signing.
-        create("preRelease") {
-            storeFile = file("${rootProject.projectDir}/debug.keystore")
-                .takeIf { it.exists() }
-                ?: file("${System.getProperty("user.home")}/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        // Fixed release keystore committed to the repo so every build (local + CI)
+        // signs with the same key → APKs can overwrite-install each other.
+        // To rotate: replace app/keystore/refile.keystore and update creds below.
+        create("release") {
+            storeFile = file("${rootProject.projectDir}/app/keystore/refile.keystore")
+            storePassword = "refile123"
+            keyAlias = "refile"
+            keyPassword = "refile123"
         }
     }
 
@@ -39,7 +38,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("preRelease")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
