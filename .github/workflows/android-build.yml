@@ -2,12 +2,12 @@ name: Android Build
 
 on:
   push:
-    branches:
-      - '**'
+    tags:
+      - 'dev'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-release:
@@ -32,9 +32,23 @@ jobs:
       - name: Build release APK
         run: ./gradlew :app:assembleRelease --console=plain
 
-      - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-release-apk
-          path: app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
+      - name: Prepare APK asset
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk dist/refile-dev.apk
+
+      - name: Delete existing dev release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete dev --yes --cleanup-tag=false || true
+
+      - name: Create dev release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create dev dist/refile-dev.apk \
+            --title "dev" \
+            --notes "Auto build from tag dev @ $(git rev-parse --short HEAD)" \
+            --target main
