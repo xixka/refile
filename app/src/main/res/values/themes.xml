@@ -1,14 +1,15 @@
 <resources>
     <!--
-      Base theme: no action bar + cinema-black window background.
+      Base theme: no action bar + pure-white window background (Infuse light).
       Compose Material 3 (WebDavRenamerTheme) takes over the actual styling
       at the content level; this XML theme only governs the launch window
       and system bars before Compose mounts.
     -->
-    <style name="Theme.WebDavRenamer" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/cinema_black</item>
+    <style name="Theme.WebDavRenamer" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/infuse_white</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
     </style>
 </resources>
