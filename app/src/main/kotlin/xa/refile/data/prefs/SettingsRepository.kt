@@ -161,7 +161,7 @@ class SettingsRepository @Inject constructor(
 
     private companion object {
         const val DEFAULT_LANGUAGE = "zh-CN"
-        const val DEFAULT_PRESET = Preset.DEFAULT.name
+        val DEFAULT_PRESET = Preset.DEFAULT.name
         private val KEY_API_KEY = stringPreferencesKey("api_key")
         private val KEY_LANGUAGE = stringPreferencesKey("language")
         private val KEY_PRESET_ID = stringPreferencesKey("preset_id")
