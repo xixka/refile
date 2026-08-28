@@ -59,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -118,10 +119,21 @@ fun BrowserScreen(
     /** 「匹配」按钮上方 3 选 1 浮层（自动/电影/剧集）展开状态。
      *  点击「匹配」按钮先弹出此浮层，用户选定类型后再递归展开目录并跳转预览页。 */
     var showMatchTypePicker by remember { mutableStateOf(false) }
+    /** 区间选择引导：仅在本会话首次进入多选模式时提示一次「长按可连选」。 */
+    var rangeHintShown by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(serverId) { viewModel.init(serverId) }
+
+    // 首次进入多选模式时提示长按区间选择（Shift 连选），提升可发现性。
+    val rangeHintText = stringResource(R.string.browser_range_select_hint)
+    LaunchedEffect(state.multiSelectMode) {
+        if (state.multiSelectMode && !rangeHintShown) {
+            rangeHintShown = true
+            snackbarHostState.showSnackbar(rangeHintText)
+        }
+    }
 
     // 重命名完成后从进度页返回时触发刷新，展示最新文件列表。
     LaunchedEffect(shouldRefresh) {
@@ -339,6 +351,10 @@ fun BrowserScreen(
                                         (entry.isCollection || MediaFileTypes.isSelectableVideo(name))
                                     ) {
                                         viewModel.enterMultiSelect(fullPath, entry.isCollection)
+                                    } else if (state.multiSelectMode) {
+                                        // 多选中长按 = 区间选择（Shift 语义）：
+                                        // 选中锚点到本项（含）之间的全部剧集/目录。
+                                        viewModel.selectRangeTo(fullPath, entry.isCollection)
                                     }
                                 },
                             )

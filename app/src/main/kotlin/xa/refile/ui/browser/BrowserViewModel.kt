@@ -29,7 +29,8 @@ import javax.inject.Inject
  * - 导航：[navigateInto] / [navigateTo] / [goUp] / [refresh]。
  * - 排序：[toggleSort] / [toggleSortOrder]，改变规则即对当前列表重排。
  * - 多选：长按视频或目录进入多选；可选范围为「视频文件 + 目录」（[isSelectable]）；
- *   字幕/nfo/图片/iso 仅显示，不可选。选中目录在「匹配」时通过
+ *   字幕/nfo/图片/iso 仅显示，不可选。多选中长按另一项 = 区间选择（Shift 语义）：
+ *   从最近点选项到长按项（含）全部选中。选中目录在「匹配」时通过
  *   [expandSelectionToFiles] 递归展开为视频文件路径。
  *
  * 安全约束：密码仅在 [ServerRepository.clientFor] 内解密用于构造 client，绝不进入日志/UI 状态（红线）。
@@ -56,6 +57,8 @@ class BrowserViewModel @Inject constructor(
         val sortAsc: Boolean = true,
         val multiSelectMode: Boolean = false,
         val selectedPaths: Set<String> = emptySet(),
+        /** 区间选择锚点：最近一次点选/长按选中的路径；多选中长按另一项时选中两者之间全部可选项。 */
+        val selectionAnchor: String? = null,
         /** 递归展开选中目录为视频文件中（「匹配」点击后）。 */
         val expanding: Boolean = false,
     )
@@ -229,18 +232,53 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /** 长按可勾选项（视频或目录）进入多选模式并预选该项；非可勾选项忽略。 */
+    /** 长按可勾选项（视频或目录）进入多选模式并预选该项；非可勾选项忽略。锚点设为该项。 */
     fun enterMultiSelect(seedPath: String, isCollection: Boolean) {
         if (!isSelectable(fileNameOf(seedPath), isCollection)) return
-        _uiState.update { it.copy(multiSelectMode = true, selectedPaths = setOf(seedPath)) }
+        _uiState.update {
+            it.copy(multiSelectMode = true, selectedPaths = setOf(seedPath), selectionAnchor = seedPath)
+        }
     }
 
-    /** 勾选/取消勾选某项（视频或目录）；非可勾选项忽略。 */
+    /** 勾选/取消勾选某项（视频或目录）；非可勾选项忽略。锚点更新为该项（供后续长按区间选择）。 */
     fun toggleSelected(path: String, isCollection: Boolean) {
         if (!isSelectable(fileNameOf(path), isCollection)) return
         _uiState.update {
             val next = if (path in it.selectedPaths) it.selectedPaths - path else it.selectedPaths + path
-            it.copy(selectedPaths = next)
+            it.copy(selectedPaths = next, selectionAnchor = path)
+        }
+    }
+
+    /**
+     * 长按区间选择（Shift 语义，对应用户诉求「选一个文件后跨几个文件长按，自动选中中间剧集」）：
+     * 选中 [UiState.selectionAnchor]（不可见时回退为当前列表首个已选项）到 [path] 之间
+     * （含两端）的全部可选项，并与现有选集**合并**（支持累积多个区间）；锚点更新为 [path]。
+     *
+     * - 非多选模式下等价于 [enterMultiSelect]（预选长按项）。
+     * - 范围按当前列表的展示顺序（含排序）计算；仅视频与目录计入，字幕/iso 等不可选项跳过。
+     * - 目标不在当前列表时不做任何事。
+     */
+    fun selectRangeTo(path: String, isCollection: Boolean) {
+        if (!isSelectable(fileNameOf(path), isCollection)) return
+        val s = _uiState.value
+        if (!s.multiSelectMode) {
+            enterMultiSelect(path, isCollection)
+            return
+        }
+        val selectable = currentSelectablePaths(s)
+        val targetIdx = selectable.indexOf(path)
+        if (targetIdx < 0) return
+        val anchorIdx = run {
+            val byAnchor = s.selectionAnchor?.let { selectable.indexOf(it) } ?: -1
+            if (byAnchor >= 0) return@run byAnchor
+            val bySelected = selectable.indexOfFirst { it in s.selectedPaths }
+            if (bySelected >= 0) bySelected else targetIdx
+        }
+        val from = minOf(anchorIdx, targetIdx)
+        val to = maxOf(anchorIdx, targetIdx)
+        val range = selectable.subList(from, to + 1).toSet()
+        _uiState.update {
+            it.copy(selectedPaths = it.selectedPaths + range, selectionAnchor = path)
         }
     }
 
@@ -261,9 +299,9 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    /** 退出多选并清空选中。 */
+    /** 退出多选并清空选中与锚点。 */
     fun exitMultiSelect() {
-        _uiState.update { it.copy(multiSelectMode = false, selectedPaths = emptySet()) }
+        _uiState.update { it.copy(multiSelectMode = false, selectedPaths = emptySet(), selectionAnchor = null) }
     }
 
     /**

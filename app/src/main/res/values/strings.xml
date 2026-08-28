@@ -60,6 +60,7 @@
     <string name="browser_select_match_type">选择匹配方式</string>
     <string name="browser_select_match_type_subtitle">选定后开始识别并整理所选文件</string>
     <string name="browser_expanding_dir">正在展开目录…</string>
+    <string name="browser_range_select_hint">已进入多选：点选文件后长按另一文件，可选中两者之间的全部文件</string>
 
     <!-- 匹配方式 -->
     <string name="match_type_auto">自动</string>
@@ -236,6 +237,7 @@
     <string name="batch_match_bound_files">已绑定文件（点击交换）</string>
     <string name="batch_match_smart">智能</string>
     <string name="batch_match_sequential">顺序</string>
+    <string name="batch_match_current_media">当前已选（点击保留并返回）</string>
 
     <!-- 单条匹配编辑页 -->
     <string name="edit_match_title">匹配</string>

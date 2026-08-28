@@ -137,7 +137,7 @@ fun BatchMatchScreen(
     // ---- 弹窗 / Sheet 状态 ----
     var showDiscardConfirm by remember { mutableStateOf(false) }
     var showApplyConfirm by remember { mutableStateOf(false) }
-    /** 清空 bindings 的确认回调（selectMedia / setSeason / unbindAll 触发）。 */
+    /** 清空 bindings 的确认回调（仅换剧 selectMedia 触发；切季已改为重映射不再清空）。 */
     var pendingClearAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     /** 精确编辑 BottomSheet 对应的文件路径（从文件侧进入：改绑到其他槽）。 */
     var preciseEditFile by remember { mutableStateOf<String?>(null) }
@@ -156,11 +156,12 @@ fun BatchMatchScreen(
         }
     }
 
-    // 应用按钮启用条件：只要没有未绑定文件即可执行重命名（不再要求 dirty / 无重复）。
-    // 重复槽位会由预览页冲突检测兜底，这里不阻断。
+    // 应用按钮启用条件：已选剧集 + 集列表就绪即可。未绑定文件不阻断（应用时保持原样，
+    // 与 summaryText「N 个保持原样」一致）；重复槽位由预览页冲突检测兜底。
     val canApply = !state.loading &&
         state.files.isNotEmpty() &&
-        state.unboundFiles.isEmpty()
+        state.selectedMedia?.mediaType == MediaType.EPISODE &&
+        state.episodeList.isNotEmpty()
 
     Scaffold(
         topBar = {
@@ -207,13 +208,23 @@ fun BatchMatchScreen(
                 val selectedMedia = state.selectedMedia
 
                 if (selectedMedia != null && !reselectMode) {
-                    // ---- 正常模式：已选剧集卡（固定）+ 校验状态条 + 集位槽（滚动）----
-                    // 季选择器与单集编辑页对齐：仅在重新选择视图内展示（点击卡片进入）。
+                    // ---- 正常模式：已选剧集卡（固定）+ 快捷季选择器 + 校验状态条 + 集位槽（滚动）----
                     SelectedMediaSummary(
                         media = selectedMedia,
                         seasonNumber = state.seasonNumber,
                         onClick = { reselectMode = true },
                     )
+                    // 快捷季切换：无需进入重新选择视图即可纠正季号；切季会按
+                    // 「保留集号、替换季号」重映射现有绑定（非破坏性，不弹确认框）。
+                    if (selectedMedia.mediaType == MediaType.EPISODE && state.numberOfSeasons != null) {
+                        Box(modifier = Modifier.padding(horizontal = PageMargin)) {
+                            SeasonSelectorRow(
+                                seasonNumber = state.seasonNumber,
+                                numberOfSeasons = state.numberOfSeasons!!,
+                                onSetSeason = viewModel::setSeason,
+                            )
+                        }
+                    }
                     ValidationStatusBar(state = state)
 
                     if (state.episodeList.isEmpty()) {
@@ -240,9 +251,15 @@ fun BatchMatchScreen(
                     MediaReselectSection(
                         modifier = Modifier.weight(1f),
                         state = state,
+                        currentMedia = selectedMedia,
+                        onKeepCurrent = { reselectMode = false },
                         onSearch = viewModel::searchMedia,
                         onSelect = { c ->
-                            if (state.bindings.isNotEmpty()) {
+                            // 同一部剧重复选择：保留绑定不弹确认；换剧才弹「清空全部绑定」。
+                            val sameSeries = c.mediaType == MediaType.EPISODE &&
+                                selectedMedia?.mediaType == MediaType.EPISODE &&
+                                c.tmdbId == selectedMedia?.tmdbId
+                            if (!sameSeries && state.bindings.isNotEmpty()) {
                                 pendingClearAction = {
                                     viewModel.selectMedia(c)
                                     reselectMode = false
@@ -252,13 +269,8 @@ fun BatchMatchScreen(
                                 reselectMode = false
                             }
                         },
-                        onSetSeason = { s ->
-                            if (state.bindings.isNotEmpty()) {
-                                pendingClearAction = { viewModel.setSeason(s) }
-                            } else {
-                                viewModel.setSeason(s)
-                            }
-                        },
+                        // 切季非破坏性（重映射保留绑定），无需确认。
+                        onSetSeason = viewModel::setSeason,
                     )
                 }
             }
@@ -427,16 +439,19 @@ private fun SelectedMediaSummary(
 }
 
 /**
- * 重新选择视图：季选择器（剧集态）+ 搜索框 + 候选列表。
+ * 重新选择视图：当前已选剧集卡（若有）+ 季选择器（剧集态）+ 搜索框 + 候选列表。
  *
- * 与 [EditMatchScreen] 的 MediaSearchSection 布局对齐：季选择器置于搜索框上方，
- * 便于在重新搜索时同步切季（切换季会清空已绑定集位槽，需用户确认）。
+ * 用户体验修复（「只是季不对还得重新搜索」）：顶部直接展示当前已选剧集卡与季选择器，
+ * 纠正季号无需搜索；点击当前已选卡可保留现有选择直接返回集位槽视图。
+ * 切换季会按「保留集号、替换季号」重映射绑定（非破坏性，无需确认）。
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MediaReselectSection(
     modifier: Modifier = Modifier,
     state: BatchMatchViewModel.UiState,
+    currentMedia: MediaCandidate?,
+    onKeepCurrent: () -> Unit,
     onSearch: (String) -> Unit,
     onSelect: (MediaCandidate) -> Unit,
     onSetSeason: (Int?) -> Unit,
@@ -445,6 +460,18 @@ private fun MediaReselectSection(
     val showSeasonPicker = selectedMedia?.mediaType == MediaType.EPISODE &&
         state.numberOfSeasons != null
     Column(modifier = modifier.padding(horizontal = PageMargin, vertical = 8.dp)) {
+        // 当前已选剧集卡：点击保留当前选择并返回集位槽视图（无需重新搜索）。
+        if (currentMedia != null && currentMedia.mediaType == MediaType.EPISODE) {
+            Text(
+                text = stringResource(R.string.batch_match_current_media),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(4.dp))
+            CandidateRow(candidate = currentMedia, onClick = onKeepCurrent)
+            Spacer(Modifier.height(8.dp))
+        }
         // 季选择器：剧集态展示在搜索框上方（与单集编辑页 MediaSearchSection 一致）
         if (showSeasonPicker) {
             SeasonSelectorRow(

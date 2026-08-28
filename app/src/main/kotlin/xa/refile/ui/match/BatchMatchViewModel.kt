@@ -213,12 +213,24 @@ class BatchMatchViewModel @Inject constructor(
     }
 
     /**
-     * 选定一个搜索候选：拉 TV 详情 + 默认「全部季」集列表，**清空全部 bindings**。
+     * 选定一个搜索候选：拉 TV 详情 + 默认「全部季」集列表。
      *
-     * UI 调用前应先弹 AlertDialog 确认「将清空全部绑定」（仅当 bindings 非空时）。
-     * 简化做法：本方法直接清空 bindings，由 UI 决定是否先弹确认。
+     * - 同一部剧重复选择：视为确认当前选择，仅清空搜索态，**保留 bindings**
+     *   （用户在重新选择视图点回同一部剧时不应意外丢失全部绑定）。
+     * - 选择不同剧：**清空全部 bindings**（旧槽位对新剧无意义），
+     *   UI 调用前应先弹 AlertDialog 确认（仅当 bindings 非空时）。
      */
     fun selectMedia(candidate: EditMatchViewModel.MediaCandidate) {
+        val current = _uiState.value.selectedMedia
+        val sameSeries = candidate.mediaType == MediaType.EPISODE &&
+            current?.mediaType == MediaType.EPISODE &&
+            candidate.tmdbId == current.tmdbId
+        if (sameSeries) {
+            _uiState.update {
+                it.copy(mediaSearchResults = emptyList(), mediaSearchQuery = "")
+            }
+            return
+        }
         _uiState.update {
             it.copy(
                 selectedMedia = candidate,
@@ -234,19 +246,51 @@ class BatchMatchViewModel @Inject constructor(
     }
 
     /**
-     * 切季：重新加载该季集列表，**清空全部 bindings**。
+     * 切季：重新加载该季集列表，并把现有绑定按「保留集号、替换季号」重映射到新列表。
      *
      * season = null 表示「全部季」，加载所有季的集列表。
-     * UI 调用前应先弹 AlertDialog 确认（仅当 bindings 非空时）。
+     *
+     * 用户体验修复（「有时候只是第几季不对，还得重新绑定/重新搜索」）：旧实现直接清空
+     * 全部绑定，用户仅想纠正季号时也要从零重新绑定。现改为重映射：
+     * - 切到单季：旧 (s, e) → (新季, e)；
+     * - 切到全部季：旧 (s, e) 原样保留；
+     * 仅当目标槽存在于加载完成的 episodeList 时保留，否则该文件回到未绑定区。
+     * 重映射后可能出现同槽多文件（重复警告会提示），用户可手动调整。
+     * 由于不再有破坏性清空，UI 无需再弹确认框。
      */
     fun setSeason(season: Int?) {
         val tvId = _uiState.value.selectedMedia?.tmdbId ?: return
+        val remapFrom = _uiState.value.bindings.toMap()
         _uiState.update { it.copy(bindings = emptyMap()) }
         if (season == null) {
-            loadAllSeasons(tvId, _uiState.value.numberOfSeasons, initBindings = false)
+            loadAllSeasons(tvId, _uiState.value.numberOfSeasons, remapFrom = remapFrom)
         } else {
-            loadSeason(tvId, season, initBindings = false)
+            loadSeason(tvId, season, remapFrom = remapFrom)
         }
+    }
+
+    /**
+     * 切季后重映射旧绑定：单季模式取 (当前季, 集号)，全部季模式原样保留 (季, 集号)。
+     * 仅当目标槽存在于当前 episodeList 时保留，否则文件回到未绑定区；
+     * 允许多文件映射到同一槽（重复警告会提示），不静默丢弃。
+     */
+    private fun remapBindings(oldBindings: Map<String, SlotKey>) {
+        val s = _uiState.value
+        if (s.episodeList.isEmpty()) return
+        val validSlots = HashSet<SlotKey>().apply {
+            s.episodeList.forEach { add(SlotKey(it.seasonNumber, it.episodeNumber)) }
+        }
+        val currentSeason = s.seasonNumber
+        val remapped = mutableMapOf<String, SlotKey>()
+        oldBindings.forEach { (fp, key) ->
+            val target = if (currentSeason != null) {
+                SlotKey(currentSeason, key.episode)
+            } else {
+                SlotKey(key.season, key.episode)
+            }
+            if (target in validSlots) remapped[fp] = target
+        }
+        _uiState.update { it.copy(bindings = remapped) }
     }
 
     /**
@@ -599,11 +643,15 @@ class BatchMatchViewModel @Inject constructor(
         }
     }
 
-    /** 加载某季集列表。若 initBindings=true，加载后初始化 bindings。 */
+    /**
+     * 加载某季集列表。若 initBindings=true，加载后初始化 bindings；
+     * 若 remapFrom 非空，加载后按「保留集号、替换季号」重映射旧绑定（切季场景）。
+     */
     private fun loadSeason(
         tvId: Int,
         season: Int,
         initBindings: Boolean = false,
+        remapFrom: Map<String, SlotKey>? = null,
     ) {
         _uiState.update { it.copy(seasonNumber = season, loading = true, error = null) }
         viewModelScope.launch {
@@ -615,8 +663,9 @@ class BatchMatchViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(episodeList = episodes, loading = false)
                 }
-                if (initBindings) {
-                    initializeBindings()
+                when {
+                    remapFrom != null -> remapBindings(remapFrom)
+                    initBindings -> initializeBindings()
                 }
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t
@@ -628,11 +677,13 @@ class BatchMatchViewModel @Inject constructor(
     /**
      * 加载所有季（1..[numberOfSeasons]）的集列表，合并为单一 episodeList。
      * 某季加载失败跳过该季，不影响其他季。每集的 [EpisodeInfo.seasonNumber] 标记所属季。
+     * remapFrom 非空时加载完成后按原槽位重映射绑定（切回「全部季」场景，槽位键原样保留）。
      */
     private fun loadAllSeasons(
         tvId: Int,
         numberOfSeasons: Int?,
         initBindings: Boolean = false,
+        remapFrom: Map<String, SlotKey>? = null,
     ) {
         _uiState.update { it.copy(seasonNumber = null, loading = true, error = null) }
         viewModelScope.launch {
@@ -662,8 +713,9 @@ class BatchMatchViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(episodeList = allEpisodes, loading = false)
                 }
-                if (initBindings) {
-                    initializeBindings()
+                when {
+                    remapFrom != null -> remapBindings(remapFrom)
+                    initBindings -> initializeBindings()
                 }
             } catch (t: Throwable) {
                 if (t is kotlinx.coroutines.CancellationException) throw t

@@ -3,6 +3,7 @@ package xa.refile
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.work.WorkManager
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -10,6 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import xa.refile.core.tmdb.TmdbImages
 import xa.refile.data.prefs.SettingsRepository
 import javax.inject.Inject
@@ -53,5 +55,13 @@ class RefileApp : Application(), Configuration.Provider {
             .distinctUntilChanged()
             .onEach { TmdbImages.proxyUrl = it }
             .launchIn(appScope)
+
+        // 用户体验修复（「第一次重命名卡在正在准备…」）：本应用实现 Configuration.Provider，
+        // WorkManager 按需初始化——首次 WorkManager.getInstance() 需创建其内部 Room 数据库
+        // 与调度线程池（数百毫秒），此前发生在用户第一次点「执行」时，表现为进度页长时间
+        // 「正在准备…」。启动时在后台线程提前触发初始化，首次重命名即可立即开始执行。
+        appScope.launch(Dispatchers.IO) {
+            runCatching { WorkManager.getInstance(this@RefileApp) }
+        }
     }
 }

@@ -292,6 +292,92 @@ class BatchMatchViewModelTest {
         assertThat(vm.uiState.value.error).isNull()
     }
 
+    // ---- 切季重映射（用户体验修复：只是季号不对时无需重新绑定/重新搜索） ----
+
+    /** 切到单季：绑定按「保留集号、替换季号」重映射，而非清空。 */
+    @Test
+    fun `setSeason remaps bindings keeping episode numbers`() = runTest(testDispatcher) {
+        val vm = BatchMatchViewModel(settings, tmdbSearch, tmdbDetail)
+        val files = listOf(
+            fileMatch("/s01e01.mkv", season = 1, ep = 1, tvId = 100),
+            fileMatch("/s01e02.mkv", season = 1, ep = 2, tvId = 100),
+        )
+        coEvery { tmdbDetail.getTv(100, "zh-CN") } returns tvMeta(100, 2)
+        coEvery { tmdbDetail.getSeason(100, 1, "zh-CN") } returns seasonDetail(1, 3)
+        coEvery { tmdbDetail.getSeason(100, 2, "zh-CN") } returns seasonDetail(2, 3)
+        vm.load(files)
+        advanceUntilIdle()
+
+        // 默认「全部季」：初始绑定来自 matched (1,1)/(1,2)
+        assertThat(vm.uiState.value.seasonNumber).isNull()
+        assertThat(vm.uiState.value.bindings["/s01e01.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(1, 1))
+
+        // 切到第 2 季：绑定重映射为 (2,1)/(2,2)，不再被清空
+        vm.setSeason(2)
+        advanceUntilIdle()
+        assertThat(vm.uiState.value.seasonNumber).isEqualTo(2)
+        assertThat(vm.uiState.value.bindings["/s01e01.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(2, 1))
+        assertThat(vm.uiState.value.bindings["/s01e02.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(2, 2))
+    }
+
+    /** 切回「全部季」：槽位键原样保留（不回退到旧季）。 */
+    @Test
+    fun `setSeason to all seasons keeps slot keys`() = runTest(testDispatcher) {
+        val vm = BatchMatchViewModel(settings, tmdbSearch, tmdbDetail)
+        val files = listOf(
+            fileMatch("/s01e01.mkv", season = 1, ep = 1, tvId = 100),
+        )
+        coEvery { tmdbDetail.getTv(100, "zh-CN") } returns tvMeta(100, 2)
+        coEvery { tmdbDetail.getSeason(100, 1, "zh-CN") } returns seasonDetail(1, 3)
+        coEvery { tmdbDetail.getSeason(100, 2, "zh-CN") } returns seasonDetail(2, 3)
+        vm.load(files)
+        advanceUntilIdle()
+
+        vm.setSeason(2)
+        advanceUntilIdle()
+        assertThat(vm.uiState.value.bindings["/s01e01.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(2, 1))
+
+        vm.setSeason(null)
+        advanceUntilIdle()
+        assertThat(vm.uiState.value.seasonNumber).isNull()
+        assertThat(vm.uiState.value.bindings["/s01e01.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(2, 1))
+    }
+
+    /** 集号不存在于新季 → 该文件回到未绑定区，而非落到错误槽位。 */
+    @Test
+    fun `setSeason drops bindings whose episode missing in new season`() = runTest(testDispatcher) {
+        val vm = BatchMatchViewModel(settings, tmdbSearch, tmdbDetail)
+        val files = listOf(
+            fileMatch("/s01e02.mkv", season = 1, ep = 2, tvId = 100),
+        )
+        coEvery { tmdbDetail.getTv(100, "zh-CN") } returns tvMeta(100, 2)
+        coEvery { tmdbDetail.getSeason(100, 1, "zh-CN") } returns seasonDetail(1, 3)
+        coEvery { tmdbDetail.getSeason(100, 2, "zh-CN") } returns seasonDetail(2, 1) // 第 2 季仅 1 集
+        vm.load(files)
+        advanceUntilIdle()
+        assertThat(vm.uiState.value.bindings["/s01e02.mkv"]).isEqualTo(BatchMatchViewModel.SlotKey(1, 2))
+
+        vm.setSeason(2)
+        advanceUntilIdle()
+        // (2,2) 不在第 2 季集列表中 → 文件解绑（进入未绑定区）
+        assertThat(vm.uiState.value.bindings).doesNotContainKey("/s01e02.mkv")
+    }
+
+    /** 同一部剧重复选择：视为确认，保留现有绑定（不触发清空）。 */
+    @Test
+    fun `selectMedia same series keeps bindings`() = runTest(testDispatcher) {
+        val vm = newViewModelWithLoadedState()
+        val before = vm.uiState.value.bindings
+        assertThat(before).isNotEmpty()
+
+        val same = vm.uiState.value.selectedMedia
+        assertThat(same).isNotNull()
+        vm.selectMedia(same!!)
+        advanceUntilIdle()
+
+        assertThat(vm.uiState.value.bindings).isEqualTo(before)
+    }
+
     // ---- 辅助构造 ----
 
     private fun newViewModel(): BatchMatchViewModel =
